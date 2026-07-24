@@ -5,8 +5,8 @@
 //
 // Node 20+ only (uses the built-in global fetch — no npm install needed).
 //
-// Auth + field mapping are already set from the Fuel Finder API docs.
-// You only need to supply TWO URLs — see the <<< PASTE markers below.
+// Endpoints, auth and field mapping are all set from the Fuel Finder API spec.
+// You only need two GitHub Actions Secrets: FF_CLIENT_ID and FF_CLIENT_SECRET.
 
 import { writeFile, mkdir } from "node:fs/promises";
 
@@ -24,28 +24,43 @@ if (!CLIENT_ID || !CLIENT_SECRET) {
   process.exit(1);
 }
 
+// Some gov.uk services sit behind a WAF that 403s requests with a bot-like or
+// missing User-Agent. Send a normal UA + Accept on every request.
+const COMMON_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (compatible; FuelFinderPriceFetcher/1.0; +https://github.com)",
+  "Accept": "application/json",
+};
+
+function failMsg(what, r, text) {
+  return `${what} failed: ${r.status} ${r.statusText}` +
+    ` [server=${r.headers.get("server")}, cf-ray=${r.headers.get("cf-ray")}]` +
+    `\nbody: ${(text || "").slice(0, 800) || "(empty)"}`;
+}
+
 // 1) Get an access token. Fuel Finder's token endpoint is a custom JSON API:
 //    POST { client_id, client_secret } -> { access_token, refresh_token, ... }
 async function getToken() {
   const r = await fetch(TOKEN_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    headers: { ...COMMON_HEADERS, "Content-Type": "application/json" },
     body: JSON.stringify({ client_id: CLIENT_ID, client_secret: CLIENT_SECRET }),
   });
-  if (!r.ok) throw new Error(`Token request failed: ${r.status} ${await r.text()}`);
-  const j = await r.json();
+  const text = await r.text();
+  if (!r.ok) throw new Error(failMsg("Token request", r, text));
+  const j = JSON.parse(text);
   const token = j.access_token || j.accessToken;
-  if (!token) throw new Error("No access_token in token response: " + JSON.stringify(j));
+  if (!token) throw new Error("No access_token in token response: " + text.slice(0, 800));
   return token;
 }
 
 // 2) Fetch the prices ----------------------------------------------------------
 async function getPrices(token) {
   const r = await fetch(PRICES_URL, {
-    headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" },
+    headers: { ...COMMON_HEADERS, "Authorization": `Bearer ${token}` },
   });
-  if (!r.ok) throw new Error(`Prices request failed: ${r.status} ${await r.text()}`);
-  return r.json();
+  const text = await r.text();
+  if (!r.ok) throw new Error(failMsg("Prices request", r, text));
+  return JSON.parse(text);
 }
 
 // --- helpers to cope with either response shape (array-of-prices or object) ---

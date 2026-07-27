@@ -126,6 +126,7 @@
 
   footer{text-align:center;color:var(--ink-soft);font-size:12px;margin-top:22px;line-height:1.6;}
   footer a{color:var(--amber);}
+  #freshness{font-weight:600;margin-bottom:6px;}
   .spin{display:inline-block;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;
     border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px;margin-right:6px;}
   @keyframes sp{to{transform:rotate(360deg);}}
@@ -200,6 +201,7 @@
   <div class="results" id="results"></div>
 
   <footer id="foot">
+    <div id="freshness"></div>
     Prices from the UK Government <a href="https://www.fuel-finder.service.gov.uk" target="_blank" rel="noopener noreferrer">Fuel Finder</a> scheme.
     Distances are straight-line × 1.3 (road estimate). UK gallons.
   </footer>
@@ -221,6 +223,7 @@
   let userLoc = null;
   let stations = [];
   let dataNote = "";
+  let dataGeneratedAt = null;
 
   const SAMPLE = {
     generated_at: "sample",
@@ -262,11 +265,27 @@
       const d = await r.json();
       stations = d.stations || [];
       if (!stations.length) throw 0;
+      dataGeneratedAt = d.generated_at || null;
       dataNote = "";
     } catch {
       stations = SAMPLE.stations;
+      dataGeneratedAt = "sample";
       dataNote = "Showing <b>sample prices</b> — live data appears once the Fuel Finder fetcher is set up.";
     }
+  }
+
+  function showFreshness(){
+    const el = $("freshness");
+    if (!el) return;
+    if (!dataGeneratedAt || dataGeneratedAt === "sample"){ el.textContent = ""; return; }
+    const then = new Date(dataGeneratedAt).getTime();
+    if (!isFinite(then)){ el.textContent = ""; return; }
+    const mins = Math.max(0, Math.round((Date.now() - then) / 60000));
+    let ago;
+    if (mins < 1) ago = "just now";
+    else if (mins < 60) ago = mins + "m ago";
+    else { const h = Math.floor(mins/60), m = mins % 60; ago = h + "h" + (m ? " " + m + "m" : "") + " ago"; }
+    el.textContent = "Prices updated " + ago;
   }
 
   async function geocodePostcode(pc){
@@ -334,6 +353,7 @@
       return;
     }
     setMsg(dataNote, dataNote.includes("sample"));
+    showFreshness();
 
     const best = rows[0];
     const cheapestPump = [...rows].sort((a,b)=>a.price-b.price)[0];
@@ -376,7 +396,6 @@
     });
 
     // cheapest pump price per brand, split into two lists: supermarkets vs fuel brands
-    // (the true-cost ranking above is unchanged)
     const SUPERMARKETS = ["tesco","asda","sainsbury","morrison","costco","booths","waitrose"];
     const isSupermarket = b => { const x = (b||"").toLowerCase(); return SUPERMARKETS.some(k => x.includes(k)); };
 
@@ -441,4 +460,7 @@
       }));
     } catch {}
   }));
+
+  // On load, fetch the data once so the footer can show how fresh the prices are.
+  loadStations().then(showFreshness);
 </script>

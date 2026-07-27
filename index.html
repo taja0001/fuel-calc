@@ -335,7 +335,7 @@
         return {s, price, dist, fillCost, tripCost, total: fillCost + tripCost};
       }).filter(Boolean).sort((a,b) => a.total - b.total);
 
-      render(rows, {fuel, litresFill});
+      render(rows, {fuel, litresFill, radius});
     } catch(e){
       setMsg(e.message || "Something went wrong — try again.", true);
     } finally {
@@ -371,7 +371,8 @@
       res.appendChild(n);
     }
 
-    rows.forEach((r, i) => {
+    const shown = rows.slice(0, 15);
+    shown.forEach((r, i) => {
       const el = document.createElement("div");
       el.className = "station" + (i === 0 ? " best" : "");
       const delta = r.total - best.total;
@@ -394,6 +395,13 @@
         `https://www.google.com/maps/dir/?api=1&destination=${r.s.lat},${r.s.lng}&travelmode=driving`;
       res.appendChild(el);
     });
+
+    if (rows.length > shown.length){
+      const more = document.createElement("div");
+      more.className = "notice";
+      more.textContent = `Showing the ${shown.length} best-value of ${rows.length} within ${ctx.radius} miles — lower the radius for fewer, closer results.`;
+      res.appendChild(more);
+    }
 
     // cheapest pump price per brand, split into two lists: supermarkets vs fuel brands
     const SUPERMARKETS = ["tesco","asda","sainsbury","morrison","costco","booths","waitrose"];

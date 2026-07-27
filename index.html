@@ -170,6 +170,7 @@
         <option value="E5">Super unleaded (E5)</option>
         <option value="B7">Diesel (B7)</option>
         <option value="B7P">Premium diesel</option>
+        <option value="HVO">HVO diesel</option>
       </select></div>
     </div>
     <div class="field">
@@ -367,4 +368,23 @@
       judged fairly against a dearer one nearby.</p>`;
     res.appendChild(how);
   }
+
+  // Remember your car on THIS device only. Saved in your browser's localStorage —
+  // never uploaded, never in the repo, invisible to anyone else who visits the site.
+  const CAR_KEY = "fillup_car_v1";
+  try {
+    const c = JSON.parse(localStorage.getItem(CAR_KEY) || "null");
+    if (c) {
+      if (c.mpg)  $("mpg").value  = c.mpg;
+      if (c.tank) $("tank").value = c.tank;
+      if (c.fuel) $("fuel").value = c.fuel;
+    }
+  } catch {}
+  ["mpg","tank","fuel"].forEach(id => $(id).addEventListener("change", () => {
+    try {
+      localStorage.setItem(CAR_KEY, JSON.stringify({
+        mpg: $("mpg").value, tank: $("tank").value, fuel: $("fuel").value
+      }));
+    } catch {}
+  }));
 </script>

@@ -403,7 +403,7 @@
       res.appendChild(more);
     }
 
-    // cheapest pump price per brand, split into two lists: supermarkets vs fuel brands
+    // cheapest by TRUE COST per brand, split into two lists: supermarkets vs fuel brands
     const SUPERMARKETS = ["tesco","asda","sainsbury","morrison","costco","booths","waitrose"];
     const isSupermarket = b => { const x = (b||"").toLowerCase(); return SUPERMARKETS.some(k => x.includes(k)); };
 
@@ -413,9 +413,9 @@
       let e = brandMap.get(b);
       if (!e){ e = {brand:b, count:0, best:r}; brandMap.set(b, e); }
       e.count++;
-      if (r.price < e.best.price) e.best = r;
+      if (r.total < e.best.total) e.best = r;
     }
-    const brands = [...brandMap.values()].sort((a,b) => a.best.price - b.best.price);
+    const brands = [...brandMap.values()].sort((a,b) => a.best.total - b.best.total);
 
     function brandSection(title, list){
       if (!list.length) return;
@@ -428,10 +428,10 @@
         row.className = "brand-row" + (i === 0 ? " best" : "");
         row.innerHTML =
           `<div class="bn"></div>
-           <div class="bp"><span class="p">${e.best.price.toFixed(1)}p</span>
-             <a class="dir" target="_blank" rel="noopener noreferrer" title="Directions to cheapest">🧭</a></div>`;
+           <div class="bp"><span class="p">${gbp(e.best.total)}</span>
+             <a class="dir" target="_blank" rel="noopener noreferrer" title="Directions to best-value branch">🧭</a></div>`;
         row.querySelector(".bn").textContent =
-          `${e.brand} · ${e.count} nearby · cheapest ${e.best.dist.toFixed(1)} mi`;
+          `${e.brand} · ${e.best.price.toFixed(1)}p · ${e.count} nearby · ${e.best.dist.toFixed(1)} mi`;
         row.querySelector(".dir").href =
           `https://www.google.com/maps/dir/?api=1&destination=${e.best.s.lat},${e.best.s.lng}&travelmode=driving`;
         res.appendChild(row);

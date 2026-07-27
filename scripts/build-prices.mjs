@@ -5,7 +5,7 @@
 //
 // Node 20+ (built-in global fetch). Env needed: FF_CLIENT_ID, FF_CLIENT_SECRET.
 
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir, readFile } from "node:fs/promises";
 
 const CLIENT_ID     = process.env.FF_CLIENT_ID;
 const CLIENT_SECRET = process.env.FF_CLIENT_SECRET;
@@ -120,13 +120,30 @@ async function main() {
     );
   }
 
+  // sort by id so the output (and the change-check) is stable run-to-run
+  stations.sort((a, b) => (a.id > b.id ? 1 : a.id < b.id ? -1 : 0));
+
+  // Only rewrite the file when the actual data changed. Otherwise the
+  // generated_at timestamp alone would force a needless commit every run.
+  const newBody = JSON.stringify(stations);
+  let oldBody = "";
+  try {
+    const prev = JSON.parse(await readFile("data/prices.json", "utf8"));
+    oldBody = JSON.stringify(prev.stations || []);
+  } catch { /* no existing file yet */ }
+
+  if (newBody === oldBody) {
+    console.log(`No price changes (${stations.length} stations) — prices.json left unchanged.`);
+    return;
+  }
+
   await mkdir("data", { recursive: true });
   await writeFile("data/prices.json", JSON.stringify({
     generated_at: new Date().toISOString(),
     count: stations.length,
     stations,
   }));
-  console.log(`Wrote data/prices.json with ${stations.length} stations.`);
+  console.log(`Wrote data/prices.json with ${stations.length} stations (data changed).`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

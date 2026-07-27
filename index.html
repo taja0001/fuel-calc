@@ -102,6 +102,9 @@
   .st-main .pill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;
     text-transform:uppercase;color:var(--go);background:var(--go-soft);border-radius:20px;
     padding:2px 8px;margin-top:6px;}
+  .dir{display:inline-block;margin-top:8px;margin-right:10px;font-size:13px;font-weight:600;
+    color:var(--amber);text-decoration:none;}
+  .dir:hover{text-decoration:underline;}
   .st-cost{text-align:right;}
   .st-cost .total{font-weight:700;font-size:17px;font-variant-numeric:tabular-nums;}
   .st-cost .delta{font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums;margin-top:2px;}
@@ -166,7 +169,8 @@
         <option value="E10">Unleaded (E10)</option>
         <option value="E5">Super unleaded (E5)</option>
         <option value="B7">Diesel (B7)</option>
-        <option value="SDV">Premium diesel</option>
+        <option value="B7P">Premium diesel</option>
+        <option value="HVO">HVO diesel</option>
       </select></div>
     </div>
     <div class="field">
@@ -198,13 +202,11 @@
   const $ = id => document.getElementById(id);
   const gbp = n => "£" + (isFinite(n) ? n : 0).toFixed(2);
 
-  // --- state ---
   let level = 25;               // % full
   let userLoc = null;           // {lat, lng, label}
   let stations = [];            // loaded price data
   let dataNote = "";            // provenance note
 
-  // --- sample data (used until data/prices.json exists) ---
   const SAMPLE = {
     generated_at: "sample",
     stations: [
@@ -219,7 +221,6 @@
     ]
   };
 
-  // --- fuel level segments ---
   document.querySelectorAll(".seg").forEach(b => b.addEventListener("click", () => {
     level = parseInt(b.dataset.level, 10);
     document.querySelectorAll(".seg").forEach(x =>
@@ -227,7 +228,6 @@
   }));
   document.querySelector('.seg[data-level="25"]').setAttribute("aria-pressed","true");
 
-  // --- helpers ---
   function num(el){ const v = parseFloat(el.value); return isFinite(v) && v >= 0 ? v : 0; }
   function haversine(a, b){
     const R = 3958.8, toR = d => d*Math.PI/180;
@@ -239,7 +239,6 @@
     $("msg").innerHTML = html ? `<div class="notice${warn?' warn':''}">${html}</div>` : "";
   }
 
-  // --- data load ---
   async function loadStations(){
     if (stations.length) return;
     try {
@@ -255,7 +254,6 @@
     }
   }
 
-  // --- geocoding ---
   async function geocodePostcode(pc){
     const r = await fetch("https://api.postcodes.io/postcodes/" + encodeURIComponent(pc.trim()));
     if (!r.ok) throw new Error("Postcode not found — check it and try again.");
@@ -274,7 +272,6 @@
     );
   });
 
-  // --- main ---
   $("search").addEventListener("click", run);
   $("postcode").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
 
@@ -294,7 +291,7 @@
 
       const rows = stations.map(s => {
         const price = s.prices ? s.prices[fuel] : 0;
-        if (!price || price <= 0) return null;                 // no price for this grade
+        if (!price || price <= 0) return null;
         const dist = haversine(userLoc, {lat:s.lat, lng:s.lng});
         if (dist > radius) return null;
         const roundTrip = dist * 2 * DETOUR;
@@ -348,6 +345,7 @@
          <div class="st-main">
            <div class="brand"></div>
            <div class="meta"></div>
+           <a class="dir" target="_blank" rel="noopener noreferrer">🧭 Directions</a>
            ${i===0 ? '<span class="pill">Best value</span>' : ''}
          </div>
          <div class="st-cost">
@@ -357,6 +355,8 @@
       el.querySelector(".brand").textContent = `${r.s.brand} · ${r.s.name || r.s.postcode}`;
       el.querySelector(".meta").textContent =
         `${r.price.toFixed(1)}p/L · ${r.dist.toFixed(1)} mi · fill ${gbp(r.fillCost)} + trip ${gbp(r.tripCost)}`;
+      el.querySelector(".dir").href =
+        `https://www.google.com/maps/dir/?api=1&destination=${r.s.lat},${r.s.lng}&travelmode=driving`;
       res.appendChild(el);
     });
 

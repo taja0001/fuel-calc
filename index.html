@@ -105,6 +105,16 @@
   .dir{display:inline-block;margin-top:8px;margin-right:10px;font-size:13px;font-weight:600;
     color:var(--amber);text-decoration:none;}
   .dir:hover{text-decoration:underline;}
+  .sec-title{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);
+    font-weight:700;margin:20px 0 2px;}
+  .brand-row{display:flex;justify-content:space-between;align-items:center;gap:12px;
+    background:var(--panel);border:1px solid var(--hair);border-radius:10px;padding:10px 12px;}
+  .brand-row.best{border-color:var(--go);box-shadow:0 0 0 1px var(--go);}
+  .brand-row .bn{font-size:13px;color:var(--ink);}
+  .brand-row .bp{display:flex;align-items:center;gap:12px;}
+  .brand-row .bp .p{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;}
+  .brand-row.best .bp .p{color:var(--go);}
+  .brand-row .dir{margin:0;font-size:16px;}
   .st-cost{text-align:right;}
   .st-cost .total{font-weight:700;font-size:17px;font-variant-numeric:tabular-nums;}
   .st-cost .delta{font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums;margin-top:2px;}
@@ -207,10 +217,10 @@
     return place.toLowerCase().includes(brand.toLowerCase()) ? place : `${brand} ${place}`;
   };
 
-  let level = 25;               // % full
-  let userLoc = null;           // {lat, lng, label}
-  let stations = [];            // loaded price data
-  let dataNote = "";            // provenance note
+  let level = 25;
+  let userLoc = null;
+  let stations = [];
+  let dataNote = "";
 
   const SAMPLE = {
     generated_at: "sample",
@@ -364,6 +374,45 @@
         `https://www.google.com/maps/dir/?api=1&destination=${r.s.lat},${r.s.lng}&travelmode=driving`;
       res.appendChild(el);
     });
+
+    // cheapest pump price per brand, split into two lists: supermarkets vs fuel brands
+    // (the true-cost ranking above is unchanged)
+    const SUPERMARKETS = ["tesco","asda","sainsbury","morrison","costco","booths","waitrose"];
+    const isSupermarket = b => { const x = (b||"").toLowerCase(); return SUPERMARKETS.some(k => x.includes(k)); };
+
+    const brandMap = new Map();
+    for (const r of rows){
+      const b = r.s.brand || "Other";
+      let e = brandMap.get(b);
+      if (!e){ e = {brand:b, count:0, best:r}; brandMap.set(b, e); }
+      e.count++;
+      if (r.price < e.best.price) e.best = r;
+    }
+    const brands = [...brandMap.values()].sort((a,b) => a.best.price - b.best.price);
+
+    function brandSection(title, list){
+      if (!list.length) return;
+      const bt = document.createElement("h3");
+      bt.className = "sec-title";
+      bt.textContent = title;
+      res.appendChild(bt);
+      list.forEach((e, i) => {
+        const row = document.createElement("div");
+        row.className = "brand-row" + (i === 0 ? " best" : "");
+        row.innerHTML =
+          `<div class="bn"></div>
+           <div class="bp"><span class="p">${e.best.price.toFixed(1)}p</span>
+             <a class="dir" target="_blank" rel="noopener noreferrer" title="Directions to cheapest">🧭</a></div>`;
+        row.querySelector(".bn").textContent =
+          `${e.brand} · ${e.count} nearby · cheapest ${e.best.dist.toFixed(1)} mi`;
+        row.querySelector(".dir").href =
+          `https://www.google.com/maps/dir/?api=1&destination=${e.best.s.lat},${e.best.s.lng}&travelmode=driving`;
+        res.appendChild(row);
+      });
+    }
+
+    brandSection("Supermarkets", brands.filter(e => isSupermarket(e.brand)));
+    brandSection("Fuel brands", brands.filter(e => !isSupermarket(e.brand)));
 
     const how = document.createElement("details");
     how.className = "how";

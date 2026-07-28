@@ -442,7 +442,7 @@
          </div>
          <div class="st-cost">
            <div class="total">${gbp(r.total)}</div>
-           <div class="delta">${i===0 ? 'cheapest' : '+'+gbp(delta).slice(1)}</div>
+           <div class="delta">${i===0 ? 'cheapest' : '+'+gbp(delta)}</div>
          </div>`;
       el.querySelector(".brand").textContent = label(r.s);
       el.querySelector(".meta").textContent =

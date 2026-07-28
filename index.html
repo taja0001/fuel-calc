@@ -3,7 +3,7 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-title" content="Fill-Up">
-<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "3eed852c87f64ec696cba231a7b87dc9"}'></script><!-- End Cloudflare Web Analytics -->
+<!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "3eed852c87f64ec696cba231a7b87dc9"}'></script><!-- End Cloudflare Web Analytics -->
 <style>
   :root {
     color-scheme: light dark;
@@ -81,6 +81,7 @@
   .loc-row .inp{flex:1;}
 
   .segs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+  .segs.modetabs{grid-template-columns:1fr 1fr;margin-bottom:14px;}
   .seg{appearance:none;border:1px solid var(--hair-strong);background:var(--panel-2);color:var(--ink);
     border-radius:9px;padding:10px 0;font-size:14px;font-weight:700;cursor:pointer;transition:all .12s;
     font-variant-numeric:tabular-nums;}
@@ -123,7 +124,7 @@
   .brand-row .chev{color:var(--ink-soft);font-size:12px;transition:transform .15s;}
   .brand-row.open .chev{transform:rotate(180deg);}
   .brand-sub{display:flex;flex-direction:column;gap:6px;margin:-2px 0 8px;padding-left:6px;}
-    .brand-sub[hidden]{display:none;}
+  .brand-sub[hidden]{display:none;}
   .substation{display:flex;justify-content:space-between;align-items:center;gap:10px;
     font-size:12.5px;padding:8px 11px;border-left:2px solid var(--hair-strong);
     background:var(--panel-2);border-radius:8px;}
@@ -163,17 +164,42 @@
   </div>
 
   <div class="card">
-    <h2>Where are you?</h2>
-    <div class="field">
-      <label for="postcode">Postcode</label>
-      <div class="loc-row">
-        <div class="inp"><input id="postcode" type="text" inputmode="text" autocomplete="postal-code" placeholder="e.g. NG1 5FS"></div>
-        <button class="btn ghost" id="useGps" type="button" title="Use my location">📍</button>
+    <h2>Where to?</h2>
+    <div class="segs modetabs" role="group" aria-label="Search mode">
+      <button class="seg mode-btn" type="button" data-mode="near" aria-pressed="true">Near me</button>
+      <button class="seg mode-btn" type="button" data-mode="journey" aria-pressed="false">Plan a journey</button>
+    </div>
+
+    <div id="panelNear">
+      <div class="field">
+        <label for="postcode">Postcode</label>
+        <div class="loc-row">
+          <div class="inp"><input id="postcode" type="text" inputmode="text" autocomplete="postal-code" placeholder="e.g. NG1 5FS"></div>
+          <button class="btn ghost" id="useGps" type="button" title="Use my location">📍</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="radius">Search radius</label>
+        <div class="inp"><input id="radius" type="number" inputmode="numeric" value="8" min="1" max="60" step="1"><span class="suf">miles</span></div>
       </div>
     </div>
-    <div class="field">
-      <label for="radius">Search radius</label>
-      <div class="inp"><input id="radius" type="number" inputmode="numeric" value="8" min="1" max="60" step="1"><span class="suf">miles</span></div>
+
+    <div id="panelJourney" hidden>
+      <div class="field">
+        <label for="startPc">Start</label>
+        <div class="loc-row">
+          <div class="inp"><input id="startPc" type="text" inputmode="text" autocomplete="postal-code" placeholder="start postcode"></div>
+          <button class="btn ghost" id="useGpsStart" type="button" title="Use my location">📍</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="destPc">Destination</label>
+        <div class="inp"><input id="destPc" type="text" inputmode="text" autocomplete="postal-code" placeholder="destination postcode"></div>
+      </div>
+      <div class="field">
+        <label for="offRoute">Max detour off route</label>
+        <div class="inp"><input id="offRoute" type="number" inputmode="decimal" value="1" min="0.2" max="5" step="0.1"><span class="suf">miles</span></div>
+      </div>
     </div>
   </div>
 
@@ -255,6 +281,8 @@
   let stations = [];
   let dataNote = "";
   let dataGeneratedAt = null;
+  let mode = "near";
+  let startLoc = null;
 
   const SAMPLE = {
     generated_at: "sample",
@@ -270,9 +298,9 @@
     ]
   };
 
-  document.querySelectorAll(".seg").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".seg[data-level]").forEach(b => b.addEventListener("click", () => {
     level = parseInt(b.dataset.level, 10);
-    document.querySelectorAll(".seg").forEach(x =>
+    document.querySelectorAll(".seg[data-level]").forEach(x =>
       x.setAttribute("aria-pressed", String(x === b)));
   }));
   document.querySelector('.seg[data-level="25"]').setAttribute("aria-pressed","true");
@@ -284,7 +312,6 @@
     const s = Math.sin(dLat/2)**2 + Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
     return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1-s));
   }
-  // Real one-way road distances (miles) from `from` to each candidate, via OSRM.
   async function roadDistances(from, list){
     const pts = [from, ...list.map(x => ({lat:x.s.lat, lng:x.s.lng}))]
       .map(p => `${(+p.lng).toFixed(5)},${(+p.lat).toFixed(5)}`).join(";");
@@ -298,6 +325,31 @@
       const row = d && d.distances && d.distances[0];
       if (!row) return null;
       return row.slice(1).map(m => (m == null ? null : m / 1609.344));
+    } catch { return null; } finally { clearTimeout(timer); }
+  }
+  async function routeSamples(from, to){
+    const url = `https://router.project-osrm.org/route/v1/driving/`
+      + `${(+from.lng).toFixed(5)},${(+from.lat).toFixed(5)};${(+to.lng).toFixed(5)},${(+to.lat).toFixed(5)}`
+      + `?overview=full&geometries=geojson`;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10000);
+    try {
+      const r = await fetch(url, {signal: ctrl.signal});
+      if (!r.ok) return null;
+      const d = await r.json();
+      const coords = d?.routes?.[0]?.geometry?.coordinates;
+      if (!coords || !coords.length) return null;
+      const pts = []; let last = null, acc = 0;
+      for (const [lng, lat] of coords){
+        const p = {lat, lng};
+        if (!last){ pts.push(p); last = p; continue; }
+        acc += haversine(last, p);
+        if (acc >= 0.5){ pts.push(p); acc = 0; }
+        last = p;
+      }
+      const end = coords[coords.length - 1];
+      pts.push({lat: end[1], lng: end[0]});
+      return pts;
     } catch { return null; } finally { clearTimeout(timer); }
   }
   function setMsg(html, warn){
@@ -353,6 +405,27 @@
     );
   });
 
+  // mode toggle
+  document.querySelectorAll(".mode-btn").forEach(b => b.addEventListener("click", () => {
+    mode = b.dataset.mode;
+    document.querySelectorAll(".mode-btn").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    $("panelNear").hidden = mode !== "near";
+    $("panelJourney").hidden = mode !== "journey";
+    setMsg("");
+  }));
+
+  $("useGpsStart").addEventListener("click", () => {
+    if (!navigator.geolocation){ setMsg("Your browser can't share location — type a start postcode instead.", true); return; }
+    $("useGpsStart").textContent = "…";
+    navigator.geolocation.getCurrentPosition(
+      p => { startLoc = {lat:p.coords.latitude, lng:p.coords.longitude, label:"your location"};
+             $("useGpsStart").textContent = "✓"; $("startPc").value = ""; },
+      () => { $("useGpsStart").textContent = "📍"; setMsg("Couldn't get your location — type a start postcode instead.", true); },
+      {enableHighAccuracy:true, timeout:8000}
+    );
+  });
+  $("destPc").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
+
   $("search").addEventListener("click", run);
   $("postcode").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
 
@@ -360,17 +433,53 @@
     const btn = $("search");
     btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Searching…';
     try {
+      await loadStations();
+      const fuel = $("fuel").value;
+      const mpg = num($("mpg")), tank = num($("tank"));
+      const litresFill = tank * (1 - level/100);
+
+      if (mode === "journey") {
+        const startPc = $("startPc").value.trim();
+        const start = startPc ? await geocodePostcode(startPc) : startLoc;
+        if (!start){ setMsg("Enter a start postcode or tap 📍.", true); return; }
+        const destPc = $("destPc").value.trim();
+        if (!destPc){ setMsg("Enter a destination postcode.", true); return; }
+        const dest = await geocodePostcode(destPc);
+        const offMax = num($("offRoute")) || 1;
+
+        const route = await routeSamples(start, dest);
+        if (!route){ setMsg("Couldn't work out that route — check the postcodes and try again.", true); return; }
+
+        const lats = route.map(p=>p.lat), lngs = route.map(p=>p.lng);
+        const mLat = offMax/69 + 0.02, mLng = offMax/40 + 0.02;
+        const minLat = Math.min(...lats)-mLat, maxLat = Math.max(...lats)+mLat;
+        const minLng = Math.min(...lngs)-mLng, maxLng = Math.max(...lngs)+mLng;
+
+        const rows = [];
+        for (const s of stations){
+          const price = s.prices ? s.prices[fuel] : 0;
+          if (!price || price <= 0) continue;
+          if (s.lat < minLat || s.lat > maxLat || s.lng < minLng || s.lng > maxLng) continue;
+          let off = Infinity;
+          for (const p of route){ const dd = haversine({lat:s.lat, lng:s.lng}, p); if (dd < off) off = dd; if (off < 0.1) break; }
+          if (off > offMax) continue;
+          const detour = off * 2;                        // off the route and back on
+          const fillCost = litresFill * price/100;
+          const tripLitres = mpg > 0 ? detour/mpg * LPG : 0;
+          const tripCost = tripLitres * price/100;
+          rows.push({s, price, dist: off, fillCost, tripCost, total: fillCost + tripCost});
+        }
+        rows.sort((a,b) => a.total - b.total);
+        render(rows, {fuel, litresFill, mode:"journey", found: rows.length});
+        return;
+      }
+
+      // --- near me ---
       const pc = $("postcode").value.trim();
       if (pc) userLoc = await geocodePostcode(pc);
       if (!userLoc){ setMsg("Enter a postcode or tap 📍 to use your location.", true); return; }
+      const radius = num($("radius")) || 8;
 
-      await loadStations();
-
-      const fuel = $("fuel").value;
-      const mpg = num($("mpg")), tank = num($("tank")), radius = num($("radius")) || 8;
-      const litresFill = tank * (1 - level/100);
-
-      // candidates within the radius, by straight-line distance
       const cand = stations.map(s => {
         const price = s.prices ? s.prices[fuel] : 0;
         if (!price || price <= 0) return null;
@@ -379,12 +488,11 @@
         return {s, price, sl};
       }).filter(Boolean).sort((a,b) => a.sl - b.sl);
 
-      // fetch real road distances for the nearest candidates (cap keeps the request small)
       const near = cand.slice(0, 60);
       const roadMi = near.length ? await roadDistances(userLoc, near) : null;
 
       const rows = near.map((c, i) => {
-        const dist = (roadMi && isFinite(roadMi[i])) ? roadMi[i] : c.sl * DETOUR; // real road, else estimate
+        const dist = (roadMi && isFinite(roadMi[i])) ? roadMi[i] : c.sl * DETOUR;
         const roundTrip = dist * 2;
         const fillCost = litresFill * c.price/100;
         const tripLitres = mpg > 0 ? roundTrip/mpg * LPG : 0;
@@ -392,7 +500,7 @@
         return {s:c.s, price:c.price, dist, fillCost, tripCost, total: fillCost + tripCost};
       }).sort((a,b) => a.total - b.total);
 
-      render(rows, {fuel, litresFill, radius, found: cand.length});
+      render(rows, {fuel, litresFill, radius, mode:"near", found: cand.length});
     } catch(e){
       setMsg(e.message || "Something went wrong — try again.", true);
     } finally {
@@ -403,7 +511,7 @@
   function render(rows, ctx){
     const res = $("results");
     if (!rows.length){
-      setMsg("No forecourts with " + ctx.fuel + " prices within that radius. Try a bigger radius.", true);
+      setMsg("No forecourts with " + ctx.fuel + " prices " + (ctx.mode === "journey" ? "near your route. Try a bigger detour." : "within that radius. Try a bigger radius."), true);
       res.innerHTML = "";
       $("bestTotal").textContent = "£0.00";
       $("bestWhere").textContent = "No results"; $("bestSub").textContent = "";
@@ -416,8 +524,10 @@
     const cheapestPump = [...rows].sort((a,b)=>a.price-b.price)[0];
     $("bestTotal").textContent = gbp(best.total);
     $("bestWhere").textContent = label(best.s);
+    const awayWord = ctx.mode === "journey" ? "mi off route" : "mi away";
+    const tripWord = ctx.mode === "journey" ? "detour" : "trip";
     $("bestSub").textContent =
-      `${ctx.litresFill.toFixed(1)} L @ ${best.price.toFixed(1)}p · ${best.dist.toFixed(1)} mi away · fill ${gbp(best.fillCost)} + trip ${gbp(best.tripCost)}`;
+      `${ctx.litresFill.toFixed(1)} L @ ${best.price.toFixed(1)}p · ${best.dist.toFixed(1)} ${awayWord} · fill ${gbp(best.fillCost)} + ${tripWord} ${gbp(best.tripCost)}`;
 
     res.innerHTML = "";
 
@@ -447,7 +557,7 @@
          </div>`;
       el.querySelector(".brand").textContent = label(r.s);
       el.querySelector(".meta").textContent =
-        `${r.price.toFixed(1)}p/L · ${r.dist.toFixed(1)} mi · fill ${gbp(r.fillCost)} + trip ${gbp(r.tripCost)}`;
+        `${r.price.toFixed(1)}p/L · ${r.dist.toFixed(1)} mi${ctx.mode==="journey"?" off route":""} · fill ${gbp(r.fillCost)} + ${tripWord} ${gbp(r.tripCost)}`;
       el.querySelector(".dir").href =
         `https://www.google.com/maps/dir/?api=1&destination=${r.s.lat},${r.s.lng}&travelmode=driving`;
       res.appendChild(el);
@@ -456,7 +566,9 @@
     if (ctx.found > shown.length){
       const more = document.createElement("div");
       more.className = "notice";
-      more.textContent = `Showing the ${shown.length} best-value of ${ctx.found} within ${ctx.radius} miles — lower the radius for fewer, closer results.`;
+      more.textContent = ctx.mode === "journey"
+        ? `Showing the ${shown.length} best-value of ${ctx.found} near your route.`
+        : `Showing the ${shown.length} best-value of ${ctx.found} within ${ctx.radius} miles — lower the radius for fewer, closer results.`;
       res.appendChild(more);
     }
 
@@ -495,7 +607,6 @@
         row.querySelector(".dir").href =
           `https://www.google.com/maps/dir/?api=1&destination=${e.best.s.lat},${e.best.s.lng}&travelmode=driving`;
 
-        // expandable list of this brand's branches (cheapest true cost first)
         const sub = document.createElement("div");
         sub.className = "brand-sub";
         sub.hidden = true;
@@ -514,7 +625,7 @@
         });
 
         row.addEventListener("click", ev => {
-          if (ev.target.closest("a")) return;   // let the 🧭 link work without toggling
+          if (ev.target.closest("a")) return;
           sub.hidden = !sub.hidden;
           row.classList.toggle("open", !sub.hidden);
         });
@@ -555,6 +666,5 @@
     } catch {}
   }));
 
-  // On load, fetch the data once so the footer can show how fresh the prices are.
   loadStations().then(showFreshness);
 </script>

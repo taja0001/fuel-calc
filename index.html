@@ -222,6 +222,22 @@
     return place.toLowerCase().includes(brand.toLowerCase()) ? place : `${brand} ${place}`;
   };
 
+  // Fold brand-name variants (SHELL/Shell, BP/BP OIL UK/BP HARVEST ENERGY, ...) into one.
+  const BRAND_CANON = [
+    ["bp","BP"], ["shell","Shell"], ["esso","Esso"], ["texaco","Texaco"], ["jet","Jet"],
+    ["gulf","Gulf"], ["murco","Murco"], ["valero","Valero"], ["applegreen","Applegreen"],
+    ["ascona","Ascona"], ["harvest energy","Harvest Energy"], ["moto","Moto"], ["rontec","Rontec"],
+    ["motor fuel","MFG"], ["mfg","MFG"],
+    ["tesco","Tesco"], ["asda","Asda"], ["sainsbury","Sainsbury's"], ["morrison","Morrisons"], ["costco","Costco"]
+  ];
+  function canonBrand(raw){
+    const x = (raw || "").trim();
+    if (!x) return "Other";
+    const lx = x.toLowerCase();
+    for (const [key, disp] of BRAND_CANON){ if (lx.includes(key)) return disp; }
+    return x.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); // title-case unknown brands
+  }
+
   let level = 25;
   let userLoc = null;
   let stations = [];
@@ -346,7 +362,7 @@
       // candidates within the radius, by straight-line distance
       const cand = stations.map(s => {
         const price = s.prices ? s.prices[fuel] : 0;
-        if (!price || price <= 0) return null;                 // no price for this grade
+        if (!price || price <= 0) return null;
         const sl = haversine(userLoc, {lat:s.lat, lng:s.lng});
         if (sl > radius) return null;
         return {s, price, sl};
@@ -439,7 +455,7 @@
 
     const brandMap = new Map();
     for (const r of rows){
-      const b = r.s.brand || "Other";
+      const b = canonBrand(r.s.brand);
       let e = brandMap.get(b);
       if (!e){ e = {brand:b, count:0, best:r}; brandMap.set(b, e); }
       e.count++;

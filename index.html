@@ -206,13 +206,13 @@
   <footer id="foot">
     <div id="freshness"></div>
     Prices from the UK Government <a href="https://www.fuel-finder.service.gov.uk" target="_blank" rel="noopener noreferrer">Fuel Finder</a> scheme.
-    Distances are straight-line × 1.3 (road estimate). UK gallons.
+    Driving distances via <a href="https://project-osrm.org" target="_blank" rel="noopener noreferrer">OSRM</a> (estimated if routing is unavailable). UK gallons.
   </footer>
 </div>
 
 <script>
   const LPG = 4.54609;          // litres per UK gallon
-  const DETOUR = 1.3;           // straight-line -> road distance factor
+  const DETOUR = 1.3;           // straight-line -> road distance factor (fallback only)
   const $ = id => document.getElementById(id);
   const gbp = n => "£" + (isFinite(n) ? n : 0).toFixed(2);
   const label = s => {
@@ -255,6 +255,23 @@
     const dLat = toR(b.lat-a.lat), dLng = toR(b.lng-a.lng);
     const s = Math.sin(dLat/2)**2 + Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
     return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1-s));
+  }
+  // Real one-way road distances (miles) from `from` to each candidate, via OSRM.
+  // Returns an array aligned with `list`, or null if the routing service is unavailable.
+  async function roadDistances(from, list){
+    const pts = [from, ...list.map(x => ({lat:x.s.lat, lng:x.s.lng}))]
+      .map(p => `${(+p.lng).toFixed(5)},${(+p.lat).toFixed(5)}`).join(";");
+    const url = `https://router.project-osrm.org/table/v1/driving/${pts}?sources=0&annotations=distance`;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      const r = await fetch(url, {signal: ctrl.signal});
+      if (!r.ok) return null;
+      const d = await r.json();
+      const row = d && d.distances && d.distances[0];
+      if (!row) return null;
+      return row.slice(1).map(m => (m == null ? null : m / 1609.344));
+    } catch { return null; } finally { clearTimeout(timer); }
   }
   function setMsg(html, warn){
     $("msg").innerHTML = html ? `<div class="notice${warn?' warn':''}">${html}</div>` : "";
@@ -326,19 +343,29 @@
       const mpg = num($("mpg")), tank = num($("tank")), radius = num($("radius")) || 8;
       const litresFill = tank * (1 - level/100);
 
-      const rows = stations.map(s => {
+      // candidates within the radius, by straight-line distance
+      const cand = stations.map(s => {
         const price = s.prices ? s.prices[fuel] : 0;
-        if (!price || price <= 0) return null;
-        const dist = haversine(userLoc, {lat:s.lat, lng:s.lng});
-        if (dist > radius) return null;
-        const roundTrip = dist * 2 * DETOUR;
-        const fillCost = litresFill * price/100;
-        const tripLitres = mpg > 0 ? roundTrip/mpg * LPG : 0;
-        const tripCost = tripLitres * price/100;
-        return {s, price, dist, fillCost, tripCost, total: fillCost + tripCost};
-      }).filter(Boolean).sort((a,b) => a.total - b.total);
+        if (!price || price <= 0) return null;                 // no price for this grade
+        const sl = haversine(userLoc, {lat:s.lat, lng:s.lng});
+        if (sl > radius) return null;
+        return {s, price, sl};
+      }).filter(Boolean).sort((a,b) => a.sl - b.sl);
 
-      render(rows, {fuel, litresFill, radius});
+      // fetch real road distances for the nearest candidates (cap keeps the request small)
+      const near = cand.slice(0, 60);
+      const roadMi = near.length ? await roadDistances(userLoc, near) : null;
+
+      const rows = near.map((c, i) => {
+        const dist = (roadMi && isFinite(roadMi[i])) ? roadMi[i] : c.sl * DETOUR; // real road, else estimate
+        const roundTrip = dist * 2;
+        const fillCost = litresFill * c.price/100;
+        const tripLitres = mpg > 0 ? roundTrip/mpg * LPG : 0;
+        const tripCost = tripLitres * c.price/100;
+        return {s:c.s, price:c.price, dist, fillCost, tripCost, total: fillCost + tripCost};
+      }).sort((a,b) => a.total - b.total);
+
+      render(rows, {fuel, litresFill, radius, found: cand.length});
     } catch(e){
       setMsg(e.message || "Something went wrong — try again.", true);
     } finally {
@@ -399,10 +426,10 @@
       res.appendChild(el);
     });
 
-    if (rows.length > shown.length){
+    if (ctx.found > shown.length){
       const more = document.createElement("div");
       more.className = "notice";
-      more.textContent = `Showing the ${shown.length} best-value of ${rows.length} within ${ctx.radius} miles — lower the radius for fewer, closer results.`;
+      more.textContent = `Showing the ${shown.length} best-value of ${ctx.found} within ${ctx.radius} miles — lower the radius for fewer, closer results.`;
       res.appendChild(more);
     }
 
@@ -448,7 +475,7 @@
     how.className = "how";
     how.innerHTML = `<summary>How is "true cost" worked out?</summary>
       <p>Fill cost = litres needed to top up × pump price. Trip cost = the fuel you burn driving there and back
-      (distance ÷ your mpg × pump price). True cost is the two added together, so a cheap-but-far station is
+      (real road distance ÷ your mpg × pump price). True cost is the two added together, so a cheap-but-far station is
       judged fairly against a dearer one nearby.</p>`;
     res.appendChild(how);
   }

@@ -118,6 +118,16 @@
   .brand-row .bp .p{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;}
   .brand-row.best .bp .p{color:var(--go);}
   .brand-row .dir{margin:0;font-size:16px;}
+  .brand-row{cursor:pointer;}
+  .brand-row .chev{color:var(--ink-soft);font-size:12px;transition:transform .15s;}
+  .brand-row.open .chev{transform:rotate(180deg);}
+  .brand-sub{display:flex;flex-direction:column;gap:6px;margin:-2px 0 8px;padding-left:6px;}
+  .substation{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    font-size:12.5px;padding:8px 11px;border-left:2px solid var(--hair-strong);
+    background:var(--panel-2);border-radius:8px;}
+  .substation .sn{color:var(--ink);}
+  .substation .sp{display:flex;align-items:center;gap:10px;font-weight:600;font-variant-numeric:tabular-nums;}
+  .substation .dir{margin:0;font-size:15px;}
   .st-cost{text-align:right;}
   .st-cost .total{font-weight:700;font-size:17px;font-variant-numeric:tabular-nums;}
   .st-cost .delta{font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums;margin-top:2px;}
@@ -273,7 +283,6 @@
     return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1-s));
   }
   // Real one-way road distances (miles) from `from` to each candidate, via OSRM.
-  // Returns an array aligned with `list`, or null if the routing service is unavailable.
   async function roadDistances(from, list){
     const pts = [from, ...list.map(x => ({lat:x.s.lat, lng:x.s.lng}))]
       .map(p => `${(+p.lng).toFixed(5)},${(+p.lat).toFixed(5)}`).join(";");
@@ -457,8 +466,8 @@
     for (const r of rows){
       const b = canonBrand(r.s.brand);
       let e = brandMap.get(b);
-      if (!e){ e = {brand:b, count:0, best:r}; brandMap.set(b, e); }
-      e.count++;
+      if (!e){ e = {brand:b, rows:[], best:r}; brandMap.set(b, e); }
+      e.rows.push(r);
       if (r.total < e.best.total) e.best = r;
     }
     const brands = [...brandMap.values()].sort((a,b) => a.best.total - b.best.total);
@@ -470,17 +479,46 @@
       bt.textContent = title;
       res.appendChild(bt);
       list.forEach((e, i) => {
+        const n = e.rows.length;
         const row = document.createElement("div");
         row.className = "brand-row" + (i === 0 ? " best" : "");
+        row.setAttribute("role", "button");
         row.innerHTML =
           `<div class="bn"></div>
            <div class="bp"><span class="p">${gbp(e.best.total)}</span>
-             <a class="dir" target="_blank" rel="noopener noreferrer" title="Directions to best-value branch">🧭</a></div>`;
+             <a class="dir" target="_blank" rel="noopener noreferrer" title="Directions to best-value branch">🧭</a>
+             <span class="chev" aria-hidden="true">▾</span></div>`;
         row.querySelector(".bn").textContent =
-          `${e.brand} · ${e.best.price.toFixed(1)}p · ${e.count} nearby · ${e.best.dist.toFixed(1)} mi`;
+          `${e.brand} · ${e.best.price.toFixed(1)}p · ${n} nearby · ${e.best.dist.toFixed(1)} mi`;
         row.querySelector(".dir").href =
           `https://www.google.com/maps/dir/?api=1&destination=${e.best.s.lat},${e.best.s.lng}&travelmode=driving`;
+
+        // expandable list of this brand's branches (cheapest true cost first)
+        const sub = document.createElement("div");
+        sub.className = "brand-sub";
+        sub.hidden = true;
+        e.rows.slice().sort((a,b) => a.total - b.total).forEach(r => {
+          const ss = document.createElement("div");
+          ss.className = "substation";
+          ss.innerHTML =
+            `<span class="sn"></span>
+             <span class="sp"><span>${gbp(r.total)}</span>
+               <a class="dir" target="_blank" rel="noopener noreferrer" title="Directions">🧭</a></span>`;
+          ss.querySelector(".sn").textContent =
+            `${label(r.s)} · ${r.price.toFixed(1)}p · ${r.dist.toFixed(1)} mi`;
+          ss.querySelector(".dir").href =
+            `https://www.google.com/maps/dir/?api=1&destination=${r.s.lat},${r.s.lng}&travelmode=driving`;
+          sub.appendChild(ss);
+        });
+
+        row.addEventListener("click", ev => {
+          if (ev.target.closest("a")) return;   // let the 🧭 link work without toggling
+          sub.hidden = !sub.hidden;
+          row.classList.toggle("open", !sub.hidden);
+        });
+
         res.appendChild(row);
+        res.appendChild(sub);
       });
     }
 

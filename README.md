@@ -1,22 +1,26 @@
 # Fill-Up — cheapest forecourt by true cost
 
-A free web app that finds the cheapest place to fill up near you, ranked by
-**true cost** — the pump price plus the fuel you'd burn driving there and back —
+A free web app that finds the cheapest place to fill up, ranked by
+**true cost** — the pump price plus the fuel you'd actually burn getting there —
 not just the sticker price. It runs on live UK prices from the government
 [Fuel Finder](https://www.fuel-finder.service.gov.uk) scheme.
 
-**Live site:** https://taja0001.github.io/fuel-calc/
+**Live site:** https://fuel.thomasainsworth.co.uk
 
 ## Features
 
-- **True-cost ranking** — forecourts scored on fill cost plus the fuel to drive there and back, so a cheap-but-far station is judged fairly against a dearer one nearby.
-- **Cheapest by brand** — two lists, Supermarkets and Fuel brands, each sorted cheapest-first.
+- **True-cost ranking** — forecourts scored on fill cost plus the fuel to drive there (and back), using **real road distances**, so a cheap-but-far station is judged fairly against a dearer one nearby.
+- **Two modes:**
+  - **Near me** — cheapest fill-ups within a radius of a postcode or your current location.
+  - **Plan a journey** — enter a start and destination and it finds the cheapest fill-up **on the way**, ranked by pump price plus the small detour off your route.
+- **Cheapest by brand** — two lists, Supermarkets and Fuel brands, sorted cheapest-first. Brand-name variants are merged (e.g. `BP` / `BP OIL UK` / `BP HARVEST ENERGY` → one **BP**), and each brand row taps to expand its individual branches.
 - **Directions** — one tap opens Google Maps navigation to any forecourt.
-- **Location** — search by postcode (via postcodes.io) or use your current location.
+- **Location** — postcode (via postcodes.io) or current location.
 - **Private saved car** — mpg / tank / fuel type are saved in your browser only (localStorage). Never uploaded, never in the repo, invisible to anyone else.
-- **Freshness indicator** — the footer shows how long ago the prices were updated.
-- **Add to home screen** — works as a web-app shortcut on your phone.
+- **Freshness indicator** — the footer shows how long ago the prices last changed.
+- **Add to home screen** — installable web-app shortcut with its own icon.
 - **Light & dark themes**, automatic.
+- **Privacy-friendly analytics** — Cloudflare Web Analytics (no cookies, no consent banner).
 
 ## How it works
 
@@ -32,6 +36,10 @@ that blocks datacenter/cloud IPs — GitHub Actions and cloud schedulers all get
 on a machine at home. The Pi does that and pushes the results here; the app then
 reads them with no API key ever exposed in the browser.
 
+In the browser, the app also calls two free services directly: **postcodes.io**
+(turn a postcode into coordinates) and **OSRM** (real driving distances, and the
+route for journey mode). Both are cookieless and need no key.
+
 ## Repository layout
 
 | Path | Purpose |
@@ -39,6 +47,7 @@ reads them with no API key ever exposed in the browser.
 | `index.html` | The whole app — UI and logic in one file. |
 | `data/prices.json` | Current prices for ~8,000 UK forecourts. Written by the Pi. |
 | `scripts/build-prices.mjs` | The fetcher: pulls Fuel Finder, merges, writes `prices.json`. |
+| `icon-192.png` | App icon (browser tab + home screen). |
 
 ## The data pipeline (`scripts/build-prices.mjs`)
 
@@ -99,16 +108,25 @@ nmcli connection modify <connection-name> wifi.powersave 2
 Register once at https://www.developer.fuel-finder.service.gov.uk (GOV.UK One Login)
 to get a client ID and secret, then put them in `~/fuel/secrets.env` on the Pi.
 
+## Custom domain
+
+Served at `fuel.thomasainsworth.co.uk` via GitHub Pages. DNS is a Cloudflare `CNAME`
+`fuel` → `taja0001.github.io`, set to **DNS-only (grey cloud)** so GitHub can issue
+its own HTTPS certificate. (Proxying through Cloudflare blocks the cert.)
+
 ## Maintenance notes
 
-- A supermarket showing under "Fuel brands"? Add its name to the `SUPERMARKETS` list
-  near the bottom of `index.html`.
+- A brand not merging, or a supermarket showing under "Fuel brands"? Edit the
+  `BRAND_CANON` and/or `SUPERMARKETS` lists near the top of the script in `index.html`.
 - Rotating the API secret? Update `~/fuel/secrets.env` on the Pi. Nothing in the repo
   changes.
+- Analytics: the Cloudflare beacon `<script>` is in the `<head>` of `index.html`;
+  stats appear under Cloudflare → Web Analytics.
 
-## Data & licence
+## Data, services & licence
 
-Fuel prices come from the UK Government **Fuel Finder** scheme (Open Government
-Licence v3.0). Postcode lookup uses **postcodes.io** (Open Government Licence).
-Distances are straight-line × 1.3 as a road-distance estimate, and calculations use
-UK gallons (1 gallon = 4.54609 litres).
+- Fuel prices: UK Government **Fuel Finder** scheme (Open Government Licence v3.0).
+- Postcode lookup: **postcodes.io** (Open Government Licence).
+- Distances & routing: **OSRM** public demo (OpenStreetMap data, ODbL). Distances
+  fall back to a straight-line × 1.3 estimate if OSRM is unavailable.
+- Calculations use UK gallons (1 gallon = 4.54609 litres).

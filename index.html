@@ -328,11 +328,15 @@
       a.push(s);
     }
   }
-  // Keys of every cell within `mi` of a point. 69 miles per degree of latitude,
-  // ~40 per degree of longitude at UK latitudes.
+  // Keys of every cell within `mi` of a point. Latitude is a flat 69 miles per degree,
+  // but longitude shrinks as you go north — 44 mi/deg in Cornwall, 37 at Inverness, 34
+  // in Shetland. Assuming a single average silently clipped the east and west edges of
+  // a wide radius up north, so measure it at the far edge of the ring, where a degree
+  // of longitude is shortest and the ring therefore needs the most of them.
   function cellsNear(lat, lng, mi){
+    const miPerLng = Math.max(10, 69 * Math.cos((Math.abs(lat) + mi/69) * Math.PI/180));
     const rLat = Math.max(1, Math.ceil((mi/69)/CELL));
-    const rLng = Math.max(1, Math.ceil((mi/40)/CELL));
+    const rLng = Math.max(1, Math.ceil((mi/miPerLng)/CELL));
     const cy = Math.floor(lat/CELL), cx = Math.floor(lng/CELL);
     const keys = [];
     for (let dy = -rLat; dy <= rLat; dy++)
@@ -623,18 +627,35 @@
       if (!userLoc){ setMsg("Enter a postcode or tap 📍 to use your location.", true); return; }
       const radius = num($("radius")) || 8;
 
-      const cand = stations.map(s => {
-        const price = s.prices ? s.prices[fuel] : 0;
-        if (!price || price <= 0) return null;
-        const sl = haversine(userLoc, {lat:s.lat, lng:s.lng});
-        if (sl > radius) return null;
-        return {s, price, sl};
-      }).filter(Boolean).sort((a,b) => a.sl - b.sl);
+      // Only open the grid cells that fall within the radius, rather than measuring
+      // every forecourt in the country.
+      const cand = [];
+      for (const k of cellsNear(userLoc.lat, userLoc.lng, radius)){
+        const bucket = stationGrid.get(k);
+        if (!bucket) continue;
+        for (const s of bucket){
+          const price = s.prices ? s.prices[fuel] : 0;
+          if (!price || price <= 0) continue;
+          const sl = haversine(userLoc, s);
+          if (sl > radius) continue;
+          cand.push({s, price, sl});
+        }
+      }
 
-      const near = cand.slice(0, 60);
-      const roadMi = near.length ? await roadDistances(userLoc, near) : null;
+      // Choose which forecourts to measure by road on estimated true cost, not on raw
+      // distance. Taking the 60 nearest discarded a cheap station sitting just beyond
+      // them — the exact case this app exists to catch — because the shortlist was
+      // drawn before price was considered at all. 90 destinations plus the origin
+      // keeps us inside OSRM's 100-coordinate table limit.
+      const est = cand.map(c => {
+        const roundTrip = c.sl * DETOUR * 2;
+        const trip = mpg > 0 ? roundTrip/mpg * LPG * c.price/100 : 0;
+        return {c, estTotal: litresFill * c.price/100 + trip};
+      }).sort((a,b) => a.estTotal - b.estTotal).slice(0, 90).map(x => x.c);
 
-      const rows = near.map((c, i) => {
+      const roadMi = est.length ? await roadDistances(userLoc, est) : null;
+
+      const rows = est.map((c, i) => {
         const dist = (roadMi && Number.isFinite(roadMi[i])) ? roadMi[i] : c.sl * DETOUR;
         const roundTrip = dist * 2;
         const fillCost = litresFill * c.price/100;

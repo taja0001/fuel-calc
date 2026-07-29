@@ -63,23 +63,26 @@ const GRADE = {
   B7: "B7", B7_STANDARD: "B7", B7_PREMIUM: "B7P",
   B10: "B10", HVO: "HVO",
 };
+// Grades a station doesn't sell are left out rather than written as 0. Most sell
+// two to four of the six, and B10/HVO exist at barely 50 forecourts nationwide.
 function extractPrices(fuelPrices) {
-  const out = { E10: 0, E5: 0, B7: 0, B7P: 0, B10: 0, HVO: 0 };
+  const out = {};
   for (const fp of (fuelPrices || [])) {
     const key = GRADE[String(fp.fuel_type || "").toUpperCase()];
-    if (key) out[key] = Number(fp.price) || 0;
+    const price = Number(fp.price) || 0;
+    if (key && price > 0) out[key] = price;
   }
   return out;
 }
 
+const round5 = n => Math.round(n * 1e5) / 1e5;   // ~1 m, finer than any forecourt needs
+
 function locOf(info) {
   const l = info.location || info;
   return {
-    lat: Number(l.latitude),
-    lng: Number(l.longitude),
+    lat: round5(Number(l.latitude)),
+    lng: round5(Number(l.longitude)),
     postcode: l.postcode || info.postcode || "",
-    address: [l.address_line_1 || info.address_line_1, l.address_line_2 || info.address_line_2]
-      .filter(Boolean).join(", "),
   };
 }
 
@@ -97,17 +100,17 @@ async function main() {
   const stations = [];
   for (const s of info) {
     if (s.permanent_closure || s.temporary_closure) continue;
-    const { lat, lng, postcode, address } = locOf(s);
+    const { lat, lng, postcode } = locOf(s);
     if (!isFinite(lat) || !isFinite(lng)) continue;
     const fp = priceMap.get(s.node_id);
     if (!fp || !fp.length) continue;
     const pr = extractPrices(fp);
-    if (!Object.values(pr).some(v => v > 0)) continue;
+    if (!Object.keys(pr).length) continue;
     stations.push({
-      id: s.node_id,
+      id: s.node_id,          // for the stable sort only — stripped before writing
       brand: s.brand_name || s.trading_name || "",
       name: s.trading_name || "",
-      address, postcode, lat, lng,
+      postcode, lat, lng,
       prices: pr,
     });
   }
@@ -123,9 +126,13 @@ async function main() {
   // sort by id so the output (and the change-check) is stable run-to-run
   stations.sort((a, b) => (a.id > b.id ? 1 : a.id < b.id ? -1 : 0));
 
+  // The app never reads id (a 64-char hash) or the street address, so keep them
+  // out of the file every visitor downloads — together they were ~40% of it.
+  const out = stations.map(({ id, ...rest }) => rest);
+
   // Only rewrite the file when the actual data changed. Otherwise the
   // generated_at timestamp alone would force a needless commit every run.
-  const newBody = JSON.stringify(stations);
+  const newBody = JSON.stringify(out);
   let oldBody = "";
   try {
     const prev = JSON.parse(await readFile("data/prices.json", "utf8"));
@@ -133,17 +140,17 @@ async function main() {
   } catch { /* no existing file yet */ }
 
   if (newBody === oldBody) {
-    console.log(`No price changes (${stations.length} stations) — prices.json left unchanged.`);
+    console.log(`No price changes (${out.length} stations) — prices.json left unchanged.`);
     return;
   }
 
   await mkdir("data", { recursive: true });
   await writeFile("data/prices.json", JSON.stringify({
     generated_at: new Date().toISOString(),
-    count: stations.length,
-    stations,
+    count: out.length,
+    stations: out,
   }));
-  console.log(`Wrote data/prices.json with ${stations.length} stations (data changed).`);
+  console.log(`Wrote data/prices.json with ${out.length} stations (data changed).`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

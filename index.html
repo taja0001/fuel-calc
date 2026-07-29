@@ -359,7 +359,10 @@
   async function loadStations(){
     if (stations.length) return;
     try {
-      const r = await fetch("data/prices.json", {cache:"no-store"});
+      // "no-cache" (not no-store) — always check with the server, but let it answer
+      // 304 Not Modified so an unchanged file isn't re-downloaded. Prices stay live;
+      // repeat visits inside the hour cost nothing.
+      const r = await fetch("data/prices.json", {cache:"no-cache"});
       if (!r.ok) throw 0;
       const d = await r.json();
       stations = d.stations || [];

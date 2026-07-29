@@ -47,6 +47,9 @@ route for journey mode). Both are cookieless and need no key.
 | `index.html` | The whole app — UI and logic in one file. |
 | `data/prices.json` | Current prices for ~8,000 UK forecourts. Written by the Pi. |
 | `scripts/build-prices.mjs` | The fetcher: pulls Fuel Finder, merges, writes `prices.json`. |
+| `scripts/validate-prices.mjs` | Sanity-checks `prices.json`; run by GitHub Actions on every push. |
+| `.github/workflows/validate-prices.yml` | The one live Action. Validates data only — no API access. |
+| `workflows/update-prices.yml` | **Parked, does nothing.** Not in `.github/`, so GitHub never reads it. Kept as a record of why Actions can't do the fetch. |
 | `icon-192.png` | App icon (browser tab + home screen). |
 
 ## The data pipeline (`scripts/build-prices.mjs`)
@@ -54,15 +57,83 @@ route for journey mode). Both are cookieless and need no key.
 Node 20+, no dependencies (uses the built-in `fetch`). It:
 
 1. Gets an OAuth token from Fuel Finder (`POST /api/v1/oauth/generate_access_token`).
-2. Pages through two endpoints (500 records per batch, looped): `/api/v1/pfs` for
+2. Pages through two endpoints until a page comes back empty: `/api/v1/pfs` for
    station info (location, brand) and `/api/v1/pfs/fuel-prices` for prices.
 3. Merges them by `node_id`, keeping open stations that have a location and at least
    one price.
-4. Rewrites `data/prices.json` only when a price actually changed, so quiet hours
+4. Discards records the feed gets wrong (see **Bad records** below).
+5. Refuses to publish if the station count has fallen more than 10% since the last
+   run — a truncated fetch would otherwise overwrite the national list with a partial
+   one. Override with `FF_ALLOW_SHRINK=1`, or move the floor with `FF_MIN_RATIO`.
+6. Rewrites `data/prices.json` only when a price actually changed, so quiet hours
    produce no commit.
+7. Pings `FF_PING_URL` on success, if set (see **Knowing when the Pi dies**).
 
-Credentials come from the environment variables `FF_CLIENT_ID` and `FF_CLIENT_SECRET`
-(never committed).
+Only the app's own fields are written out: brand, name, postcode, lat/lng to 5 decimal
+places, and prices for the grades a station actually sells. The `node_id` is used
+internally for a stable sort but never published — it and the street address were
+about 40% of the file and the app reads neither.
+
+### Bad records
+
+A few of the ~8,000 records in the feed are malformed, and they matter more than their
+number suggests:
+
+- **Prices in pounds.** Around eight forecourts report `1.309` rather than `130.9`.
+  Read as pence, that station is 100× cheaper than anything else and wins every
+  ranking outright. Prices outside **50–400p per litre** are dropped.
+- **Broken coordinates.** A handful have latitude and longitude swapped, or the
+  longitude sign dropped (`+2.945` for Somerset, which is the North Sea). Anything
+  outside a UK bounding box is dropped, station and all — guessing at what was meant
+  would be inventing data.
+
+Each run logs what it discarded, so a sudden jump is visible in `fuel.log`.
+
+### Environment
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `FF_CLIENT_ID`, `FF_CLIENT_SECRET` | yes | Fuel Finder API credentials (never committed). |
+| `FF_PING_URL` | no | Pinged after a successful run; drives the dead-man's switch. |
+| `FF_MIN_RATIO` | no | Minimum share of the previous run's station count. Default `0.9`. |
+| `FF_ALLOW_SHRINK` | no | Set to `1` to publish a genuine large drop anyway. |
+| `FF_BASE` | no | Override the API base URL. |
+
+## Validation (`scripts/validate-prices.mjs`)
+
+`.github/workflows/validate-prices.yml` runs this on every push that touches
+`data/prices.json`. It needs no API access, so unlike the fetcher it isn't blocked by
+the Fuel Finder firewall — it just reads what was committed and fails the build on
+corrupt JSON, a suspiciously short list, coordinates outside the UK, or prices that
+aren't plausible pence-per-litre. It's the backstop for a bad push from the Pi.
+
+Run it locally the same way:
+
+```
+node scripts/validate-prices.mjs
+```
+
+A handful of odd records is normal in a government feed, so it only fails past 1% of
+the file, and prints the rest as notes.
+
+## Knowing when the Pi dies
+
+Without this the site keeps serving older and older prices and nothing says so. Two
+things cover it:
+
+- **In the app** — past 3 hours since the last update (the Pi pushes hourly), the
+  footer turns amber and a warning appears above the results telling you to check the
+  price at the pump.
+- **By email** — create a check at [healthchecks.io](https://healthchecks.io) (free),
+  set its period to 1 hour, and put its ping URL in `~/fuel/secrets.env`:
+
+  ```
+  export FF_PING_URL=https://hc-ping.com/your-uuid-here
+  ```
+
+  The fetcher pings it after every successful run, including runs where prices hadn't
+  moved. If the Pi loses power, loses its network, or the fetch keeps failing, the
+  pings stop and healthchecks.io emails you. A failed ping never fails the run.
 
 ## The Raspberry Pi
 

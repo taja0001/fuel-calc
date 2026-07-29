@@ -143,6 +143,7 @@
   footer{text-align:center;color:var(--ink-soft);font-size:12px;margin-top:22px;line-height:1.6;}
   footer a{color:var(--amber);}
   #freshness{font-weight:600;margin-bottom:6px;}
+  #freshness.stale{color:var(--warn);}
   .spin{display:inline-block;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;
     border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px;margin-right:6px;}
   @keyframes sp{to{transform:rotate(360deg);}}
@@ -437,18 +438,29 @@
     buildGrid();
   }
 
+  // The Pi pushes every hour, so three missed rounds means the feed has stopped
+  // rather than that prices happened to hold steady.
+  const STALE_HOURS = 3;
+  let staleNote = "";
+
   function showFreshness(){
     const el = $("freshness");
+    staleNote = "";
     if (!el) return;
-    if (!dataGeneratedAt || dataGeneratedAt === "sample"){ el.textContent = ""; return; }
+    if (!dataGeneratedAt || dataGeneratedAt === "sample"){ el.textContent = ""; el.classList.remove("stale"); return; }
     const then = new Date(dataGeneratedAt).getTime();
-    if (!isFinite(then)){ el.textContent = ""; return; }
+    if (!isFinite(then)){ el.textContent = ""; el.classList.remove("stale"); return; }
     const mins = Math.max(0, Math.round((Date.now() - then) / 60000));
     let ago;
     if (mins < 1) ago = "just now";
     else if (mins < 60) ago = mins + "m ago";
     else { const h = Math.floor(mins/60), m = mins % 60; ago = h + "h" + (m ? " " + m + "m" : "") + " ago"; }
-    el.textContent = "Prices updated " + ago;
+    const stale = mins >= STALE_HOURS * 60;
+    el.classList.toggle("stale", stale);
+    el.textContent = (stale ? "Prices last updated " : "Prices updated ") + ago;
+    if (stale) staleNote =
+      `These prices were last updated <b>${ago}</b> — the hourly feed looks to have stopped.
+       Treat them as a guide and check the price at the pump.`;
   }
 
   async function geocodePostcode(pc){
@@ -662,7 +674,7 @@
 
     res.innerHTML = "";
 
-    for (const note of (ctx.notes || [])){
+    for (const note of (staleNote ? [{warn:true, html:staleNote}] : []).concat(ctx.notes || [])){
       const n = document.createElement("div");
       n.className = "notice" + (note.warn ? " warn" : "");
       n.innerHTML = note.html;

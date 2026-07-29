@@ -19,11 +19,43 @@ if (!CLIENT_ID || !CLIENT_SECRET) {
   process.exit(1);
 }
 
+// Guard against publishing a truncated fetch. A run holding fewer than this share of
+// last run's stations is rejected; FF_ALLOW_SHRINK=1 overrides for a genuine drop.
+// Number(...) || 0.9, not Number(... || 0.9): a typo'd value yields NaN, and every
+// comparison against NaN is false, which would quietly switch the guard off.
+const MIN_RATIO    = Number(process.env.FF_MIN_RATIO) || 0.9;
+const ALLOW_SHRINK = process.env.FF_ALLOW_SHRINK === "1";
+// Optional dead-man's switch: a URL to ping on success (e.g. healthchecks.io). If the
+// Pi dies or the fetch keeps failing, the pings stop and that service raises the alarm.
+const PING_URL = process.env.FF_PING_URL || "";
+
+// The feed carries a few malformed records. A handful of forecourts report prices in
+// pounds (1.309 instead of 130.9), and a few have latitude and longitude swapped or
+// the longitude sign dropped. Left in, a "1.3p per litre" station wins every ranking
+// outright, and a forecourt in the North Sea distorts journey searches. Drop what
+// can't be trusted rather than guess at what was meant.
+const PRICE_MIN = 50, PRICE_MAX = 400;                            // pence per litre
+const UK = { minLat: 49.0, maxLat: 61.2, minLng: -8.8, maxLng: 2.1 };
+
 const COMMON = {
   "User-Agent": "Mozilla/5.0 (compatible; FuelFinderPriceFetcher/1.0)",
   "Accept": "application/json",
 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Never let a failed ping fail the run — the prices are already safely written.
+async function heartbeat() {
+  if (!PING_URL) return;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10000);
+    try { await fetch(PING_URL, { signal: ctrl.signal }); }
+    finally { clearTimeout(timer); }
+    console.log("Heartbeat sent.");
+  } catch (e) {
+    console.warn("Heartbeat failed (ignored):", e.message);
+  }
+}
 
 async function getToken() {
   const r = await fetch(TOKEN_URL, {
@@ -52,7 +84,9 @@ async function fetchAll(url, token, label) {
     if (!arr.length) break;
     all.push(...arr);
     console.log(`  ${label}: batch ${batch} -> ${arr.length} (total ${all.length})`);
-    if (arr.length < 500) break;
+    // Keep going until a page comes back empty. Stopping on any short page assumed
+    // the API always returns exactly 500, so one short-but-not-last page would have
+    // silently truncated the run.
     await sleep(150);
   }
   return all;
@@ -65,12 +99,14 @@ const GRADE = {
 };
 // Grades a station doesn't sell are left out rather than written as 0. Most sell
 // two to four of the six, and B10/HVO exist at barely 50 forecourts nationwide.
-function extractPrices(fuelPrices) {
+function extractPrices(fuelPrices, dropped) {
   const out = {};
   for (const fp of (fuelPrices || [])) {
     const key = GRADE[String(fp.fuel_type || "").toUpperCase()];
     const price = Number(fp.price) || 0;
-    if (key && price > 0) out[key] = price;
+    if (!key || price <= 0) continue;
+    if (price < PRICE_MIN || price > PRICE_MAX) { dropped.prices++; continue; }
+    out[key] = price;
   }
   return out;
 }
@@ -97,15 +133,21 @@ async function main() {
   const priceMap = new Map();
   for (const p of prices) priceMap.set(p.node_id, p.fuel_prices || []);
 
+  const dropped = { closed: 0, noCoords: 0, offMap: 0, noPrices: 0, prices: 0 };
   const stations = [];
   for (const s of info) {
-    if (s.permanent_closure || s.temporary_closure) continue;
+    if (s.permanent_closure || s.temporary_closure) { dropped.closed++; continue; }
     const { lat, lng, postcode } = locOf(s);
-    if (!isFinite(lat) || !isFinite(lng)) continue;
+    if (!isFinite(lat) || !isFinite(lng)) { dropped.noCoords++; continue; }
+    if (lat < UK.minLat || lat > UK.maxLat || lng < UK.minLng || lng > UK.maxLng) {
+      dropped.offMap++;
+      console.warn(`  dropped (off-map): ${s.brand_name || s.trading_name || "?"} ${postcode} at ${lat},${lng}`);
+      continue;
+    }
     const fp = priceMap.get(s.node_id);
-    if (!fp || !fp.length) continue;
-    const pr = extractPrices(fp);
-    if (!Object.keys(pr).length) continue;
+    if (!fp || !fp.length) { dropped.noPrices++; continue; }
+    const pr = extractPrices(fp, dropped);
+    if (!Object.keys(pr).length) { dropped.noPrices++; continue; }
     stations.push({
       id: s.node_id,          // for the stable sort only — stripped before writing
       brand: s.brand_name || s.trading_name || "",
@@ -114,6 +156,13 @@ async function main() {
       prices: pr,
     });
   }
+
+  console.log(
+    `Kept ${stations.length} stations. Dropped: ${dropped.closed} closed, ` +
+    `${dropped.noCoords} without coordinates, ${dropped.offMap} outside the UK, ` +
+    `${dropped.noPrices} without a usable price, plus ${dropped.prices} individual ` +
+    `prices outside ${PRICE_MIN}-${PRICE_MAX}p.`
+  );
 
   if (!stations.length) {
     throw new Error(
@@ -133,14 +182,29 @@ async function main() {
   // Only rewrite the file when the actual data changed. Otherwise the
   // generated_at timestamp alone would force a needless commit every run.
   const newBody = JSON.stringify(out);
-  let oldBody = "";
+  let oldBody = "", prevCount = 0;
   try {
     const prev = JSON.parse(await readFile("data/prices.json", "utf8"));
-    oldBody = JSON.stringify(prev.stations || []);
+    const prevStations = prev.stations || [];
+    oldBody = JSON.stringify(prevStations);
+    prevCount = prevStations.length;
   } catch { /* no existing file yet */ }
+
+  // A fetch that half-works is more dangerous than one that fails outright: it would
+  // overwrite a good national list with a partial one and publish that. Anything
+  // below MIN_RATIO of last run's total is treated as a broken fetch, not real news.
+  if (prevCount && out.length < prevCount * MIN_RATIO && !ALLOW_SHRINK) {
+    throw new Error(
+      `Refusing to publish: ${out.length} stations, down from ${prevCount} last run ` +
+      `(${((out.length / prevCount) * 100).toFixed(1)}%, floor is ${(MIN_RATIO * 100).toFixed(0)}%). ` +
+      `Looks like a truncated fetch — prices.json left alone. ` +
+      `If the drop is genuine, re-run with FF_ALLOW_SHRINK=1.`
+    );
+  }
 
   if (newBody === oldBody) {
     console.log(`No price changes (${out.length} stations) — prices.json left unchanged.`);
+    await heartbeat();
     return;
   }
 
@@ -151,6 +215,7 @@ async function main() {
     stations: out,
   }));
   console.log(`Wrote data/prices.json with ${out.length} stations (data changed).`);
+  await heartbeat();
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

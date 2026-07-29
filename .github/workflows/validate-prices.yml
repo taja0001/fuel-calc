@@ -1,0 +1,36 @@
+name: Validate prices
+
+# Checks data/prices.json whenever it changes. This is the backstop for a bad push
+# from the Pi — truncated list, corrupt JSON, coordinates outside the UK, nonsense
+# prices — and it can run here because it needs no Fuel Finder API access.
+#
+# The fetcher itself cannot run in Actions: the Fuel Finder API sits behind a firewall
+# that blocks datacenter IPs, so it lives on a Raspberry Pi at home. See README.
+
+on:
+  push:
+    paths:
+      - "data/prices.json"
+      - "scripts/validate-prices.mjs"
+      - ".github/workflows/validate-prices.yml"
+  pull_request:
+    paths:
+      - "data/prices.json"
+      - "scripts/validate-prices.mjs"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate data/prices.json
+        run: node scripts/validate-prices.mjs

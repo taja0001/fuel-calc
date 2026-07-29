@@ -1,5 +1,19 @@
 name: Update fuel prices
 
+# ############################################################################
+# PARKED — THIS FILE DOES NOTHING.
+#
+# It sits in workflows/, not .github/workflows/, so GitHub never reads it. That
+# is deliberate: the Fuel Finder API is behind a firewall (AWS CloudFront) that
+# blocks datacenter IPs, so every GitHub Actions runner gets a 403. The fetch has
+# to come from a residential connection, which is why it runs on a Raspberry Pi
+# at home instead (see README, "The Raspberry Pi").
+#
+# Kept only as a record of what was tried. Moving it into .github/workflows/
+# will not make it work. The live Action is .github/workflows/validate-prices.yml,
+# which checks the data the Pi pushes and needs no API access.
+# ############################################################################
+
 # Fetches the latest prices from Fuel Finder and commits data/prices.json.
 # Runs on a schedule and can be triggered manually from the Actions tab.
 

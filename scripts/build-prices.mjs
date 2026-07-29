@@ -78,15 +78,22 @@ async function fetchAll(url, token, label) {
       headers: { ...COMMON, "Authorization": `Bearer ${token}` },
     });
     const text = await r.text();
+    // Asked for a page past the end, the API answers 404 "Requested batch N is not
+    // available" rather than an empty list — that's how it says "done", not a failure.
+    // Only past batch 1, so a 404 on the endpoint itself is still a real error.
+    if (r.status === 404 && batch > 1) {
+      console.log(`  ${label}: no batch ${batch} — end of data (total ${all.length})`);
+      break;
+    }
     if (!r.ok) throw new Error(`${label} batch ${batch} failed: ${r.status} ${text.slice(0, 300)}`);
     const j = JSON.parse(text);
     const arr = Array.isArray(j) ? j : (j?.data ?? []);
     if (!arr.length) break;
     all.push(...arr);
     console.log(`  ${label}: batch ${batch} -> ${arr.length} (total ${all.length})`);
-    // Keep going until a page comes back empty. Stopping on any short page assumed
-    // the API always returns exactly 500, so one short-but-not-last page would have
-    // silently truncated the run.
+    // Deliberately not stopping on a short page: that assumed every page holds exactly
+    // 500, so one short-but-not-last page would have silently truncated the run. The
+    // 404 above is the real end marker, and it costs one extra request per endpoint.
     await sleep(150);
   }
   return all;

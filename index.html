@@ -312,6 +312,32 @@
     const s = Math.sin(dLat/2)**2 + Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
     return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1-s));
   }
+
+  // Bucket stations into 0.1 degree cells (~7 mi north-south, ~4 mi east-west in the
+  // UK) so a search only examines nearby cells instead of all ~8,000 stations.
+  const CELL = 0.1;
+  const cellKey = (lat, lng) => Math.floor(lat/CELL) + ":" + Math.floor(lng/CELL);
+  let stationGrid = null;
+  function buildGrid(){
+    stationGrid = new Map();
+    for (const s of stations){
+      const k = cellKey(s.lat, s.lng);
+      let a = stationGrid.get(k);
+      if (!a) stationGrid.set(k, a = []);
+      a.push(s);
+    }
+  }
+  // Keys of every cell within `mi` of a point. 69 miles per degree of latitude,
+  // ~40 per degree of longitude at UK latitudes.
+  function cellsNear(lat, lng, mi){
+    const rLat = Math.max(1, Math.ceil((mi/69)/CELL));
+    const rLng = Math.max(1, Math.ceil((mi/40)/CELL));
+    const cy = Math.floor(lat/CELL), cx = Math.floor(lng/CELL);
+    const keys = [];
+    for (let dy = -rLat; dy <= rLat; dy++)
+      for (let dx = -rLng; dx <= rLng; dx++) keys.push((cy+dy) + ":" + (cx+dx));
+    return keys;
+  }
   async function roadDistances(from, list){
     const pts = [from, ...list.map(x => ({lat:x.s.lat, lng:x.s.lng}))]
       .map(p => `${(+p.lng).toFixed(5)},${(+p.lat).toFixed(5)}`).join(";");
@@ -327,6 +353,37 @@
       return row.slice(1).map(m => (m == null ? null : m / 1609.344));
     } catch { return null; } finally { clearTimeout(timer); }
   }
+  // Journey mode: real road distance from the point on the route nearest each station
+  // to that station. One table request — the distinct route anchors as sources, the
+  // stations as destinations — reading just the pairing we asked about.
+  async function roadDetours(list){
+    const anchors = [], idx = new Map();
+    const aOf = list.map(r => {
+      const k = r.anchor.lat.toFixed(4) + "," + r.anchor.lng.toFixed(4);
+      if (!idx.has(k)){ idx.set(k, anchors.length); anchors.push(r.anchor); }
+      return idx.get(k);
+    });
+    const coords = [...anchors, ...list.map(r => r.s)];
+    if (coords.length > 95) return null;              // OSRM caps table size
+    const pts = coords.map(p => `${(+p.lng).toFixed(5)},${(+p.lat).toFixed(5)}`).join(";");
+    const src = anchors.map((_, i) => i).join(";");
+    const dst = list.map((_, i) => anchors.length + i).join(";");
+    const url = `https://router.project-osrm.org/table/v1/driving/${pts}`
+      + `?sources=${src}&destinations=${dst}&annotations=distance`;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      const r = await fetch(url, {signal: ctrl.signal});
+      if (!r.ok) return null;
+      const d = await r.json();
+      const m = d && d.distances;
+      if (!m) return null;
+      return list.map((_, i) => {
+        const v = m[aOf[i]] ? m[aOf[i]][i] : null;
+        return v == null ? null : v / 1609.344;
+      });
+    } catch { return null; } finally { clearTimeout(timer); }
+  }
   async function routeSamples(from, to){
     const url = `https://router.project-osrm.org/route/v1/driving/`
       + `${(+from.lng).toFixed(5)},${(+from.lat).toFixed(5)};${(+to.lng).toFixed(5)},${(+to.lat).toFixed(5)}`
@@ -339,17 +396,20 @@
       const d = await r.json();
       const coords = d?.routes?.[0]?.geometry?.coordinates;
       if (!coords || !coords.length) return null;
-      const pts = []; let last = null, acc = 0;
+      // Sample every ~0.5 mi, tagging each point with how far along the route it is
+      // so we can tell whether you'd still have fuel left by the time you reach it.
+      const pts = []; let last = null, acc = 0, total = 0;
       for (const [lng, lat] of coords){
         const p = {lat, lng};
-        if (!last){ pts.push(p); last = p; continue; }
-        acc += haversine(last, p);
-        if (acc >= 0.5){ pts.push(p); acc = 0; }
+        if (!last){ pts.push({lat, lng, mi: 0}); last = p; continue; }
+        const step = haversine(last, p);
+        acc += step; total += step;
+        if (acc >= 0.5){ pts.push({lat, lng, mi: total}); acc = 0; }
         last = p;
       }
       const end = coords[coords.length - 1];
-      pts.push({lat: end[1], lng: end[0]});
-      return pts;
+      pts.push({lat: end[1], lng: end[0], mi: total});
+      return {pts, miles: total};
     } catch { return null; } finally { clearTimeout(timer); }
   }
   function setMsg(html, warn){
@@ -374,6 +434,7 @@
       dataGeneratedAt = "sample";
       dataNote = "Showing <b>sample prices</b> — live data appears once the Fuel Finder fetcher is set up.";
     }
+    buildGrid();
   }
 
   function showFreshness(){
@@ -453,27 +514,94 @@
         const route = await routeSamples(start, dest);
         if (!route){ setMsg("Couldn't work out that route — check the postcodes and try again.", true); return; }
 
-        const lats = route.map(p=>p.lat), lngs = route.map(p=>p.lng);
-        const mLat = offMax/69 + 0.02, mLng = offMax/40 + 0.02;
-        const minLat = Math.min(...lats)-mLat, maxLat = Math.max(...lats)+mLat;
-        const minLng = Math.min(...lngs)-mLng, maxLng = Math.max(...lngs)+mLng;
-
-        const rows = [];
-        for (const s of stations){
-          const price = s.prices ? s.prices[fuel] : 0;
-          if (!price || price <= 0) continue;
-          if (s.lat < minLat || s.lat > maxLat || s.lng < minLng || s.lng > maxLng) continue;
-          let off = Infinity;
-          for (const p of route){ const dd = haversine({lat:s.lat, lng:s.lng}, p); if (dd < off) off = dd; if (off < 0.1) break; }
-          if (off > offMax) continue;
-          const detour = off * 2;                        // off the route and back on
-          const fillCost = litresFill * price/100;
-          const tripLitres = mpg > 0 ? detour/mpg * LPG : 0;
-          const tripCost = tripLitres * price/100;
-          rows.push({s, price, dist: off, fillCost, tripCost, total: fillCost + tripCost});
+        // Index the route by cell, then pull candidates only from the cells the route
+        // actually passes near. One box round the whole journey meant London ->
+        // Edinburgh scanned most of Britain.
+        const routeCells = new Map();
+        for (const p of route.pts){
+          const k = cellKey(p.lat, p.lng);
+          let a = routeCells.get(k);
+          if (!a) routeCells.set(k, a = []);
+          a.push(p);
         }
-        rows.sort((a,b) => a.total - b.total);
-        render(rows, {fuel, litresFill, mode:"journey", found: rows.length});
+        const wanted = new Set();
+        for (const p of route.pts) for (const k of cellsNear(p.lat, p.lng, offMax)) wanted.add(k);
+
+        const cand = [];
+        for (const k of wanted){
+          const bucket = stationGrid.get(k);
+          if (!bucket) continue;
+          for (const s of bucket){
+            const price = s.prices ? s.prices[fuel] : 0;
+            if (!price || price <= 0) continue;
+            // Nearest route point, found by looking only at the route points filed
+            // under this station's own neighbouring cells.
+            let off = Infinity, anchor = null;
+            for (const ck of cellsNear(s.lat, s.lng, offMax)){
+              const pts = routeCells.get(ck);
+              if (!pts) continue;
+              for (const p of pts){
+                const dd = haversine(s, p);
+                if (dd < off){ off = dd; anchor = p; }
+              }
+            }
+            if (!anchor || off > offMax) continue;
+            cand.push({s, price, off, anchor, at: anchor.mi});
+          }
+        }
+
+        // You can only fill up somewhere you can still reach. Fuel in the tank now
+        // (tank size x how full) gives the miles left before you'd be running on air.
+        const litresNow = tank * (level/100);
+        const rangeMi = (mpg > 0 && litresNow > 0) ? litresNow/LPG*mpg : Infinity;
+        const notes = [];
+        let usable = cand;
+        if (isFinite(rangeMi)){
+          const reach = rangeMi * 0.95;                  // leave a little in reserve
+          const inRange = cand.filter(r => r.at + r.off <= reach);
+          if (inRange.length){
+            usable = inRange;
+            const dropped = cand.length - inRange.length;
+            if (dropped) notes.push({html:
+              `You've about <b>${rangeMi.toFixed(0)} miles</b> of fuel left, so ${dropped}
+               forecourt${dropped===1?'':'s'} further along the route than that ${dropped===1?'is':'are'} left out.`});
+          } else if (cand.length){
+            notes.push({warn:true, html:
+              `With about <b>${rangeMi.toFixed(0)} miles</b> of fuel you can't reach any of these —
+               showing them anyway, but fill up sooner.`});
+          }
+          if (route.miles > rangeMi) notes.push({warn:true, html:
+            `The trip is <b>${route.miles.toFixed(0)} miles</b> and you've roughly
+             <b>${rangeMi.toFixed(0)}</b> in the tank — you'll need to stop on the way.`});
+          else notes.push({html:
+            `You've enough fuel for the whole <b>${route.miles.toFixed(0)} mile</b> trip —
+             this is simply where it's cheapest to top up.`});
+        }
+
+        // Rank on an estimate, then spend the single road-distance lookup on the best
+        // few. The detour is off the route and back on again, so it counts twice.
+        // 45 is the ceiling: each one may need its own route anchor as a source, and
+        // OSRM's table takes 90 coordinates in total.
+        const est = usable.map(r => {
+          const detour = r.off * 2 * DETOUR;
+          const trip = mpg > 0 ? detour/mpg * LPG * r.price/100 : 0;
+          return {r, estTotal: litresFill * r.price/100 + trip};
+        }).sort((a,b) => a.estTotal - b.estTotal).slice(0, 45).map(x => x.r);
+
+        const roadMi = est.length ? await roadDetours(est) : null;
+
+        const rows = est.map((r, i) => {
+          // Number.isFinite, not isFinite — OSRM sends null for an unroutable pair and
+          // plain isFinite(null) is true, which would score the detour as free.
+          const oneWay = (roadMi && Number.isFinite(roadMi[i])) ? roadMi[i] : r.off * DETOUR;
+          const detour = oneWay * 2;
+          const fillCost = litresFill * r.price/100;
+          const tripLitres = mpg > 0 ? detour/mpg * LPG : 0;
+          const tripCost = tripLitres * r.price/100;
+          return {s:r.s, price:r.price, dist: oneWay, fillCost, tripCost, total: fillCost + tripCost};
+        }).sort((a,b) => a.total - b.total);
+
+        render(rows, {fuel, litresFill, mode:"journey", found: usable.length, notes});
         return;
       }
 
@@ -495,7 +623,7 @@
       const roadMi = near.length ? await roadDistances(userLoc, near) : null;
 
       const rows = near.map((c, i) => {
-        const dist = (roadMi && isFinite(roadMi[i])) ? roadMi[i] : c.sl * DETOUR;
+        const dist = (roadMi && Number.isFinite(roadMi[i])) ? roadMi[i] : c.sl * DETOUR;
         const roundTrip = dist * 2;
         const fillCost = litresFill * c.price/100;
         const tripLitres = mpg > 0 ? roundTrip/mpg * LPG : 0;
@@ -533,6 +661,13 @@
       `${ctx.litresFill.toFixed(1)} L @ ${best.price.toFixed(1)}p · ${best.dist.toFixed(1)} ${awayWord} · fill ${gbp(best.fillCost)} + ${tripWord} ${gbp(best.tripCost)}`;
 
     res.innerHTML = "";
+
+    for (const note of (ctx.notes || [])){
+      const n = document.createElement("div");
+      n.className = "notice" + (note.warn ? " warn" : "");
+      n.innerHTML = note.html;
+      res.appendChild(n);
+    }
 
     if (cheapestPump !== best){
       const n = document.createElement("div");

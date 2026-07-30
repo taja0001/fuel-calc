@@ -813,6 +813,24 @@
           return {s:r.s, price:r.price, dist: oneWay, mins, fillCost, tripCost, total: fillCost + tripCost};
         }).sort((a,b) => a.total - b.total);
 
+        // The question behind most journey searches isn't just "where do I stop" but
+        // "what will this trip cost me". All the numbers are already in hand: route
+        // length, the car's mpg, and the best price available on the way. Priced at
+        // the best-value OPEN forecourt — quoting somewhere shut would be fiction.
+        if (rows.length && mpg > 0 && route.miles > 0){
+          const tripLitres = route.miles / mpg * LPG;
+          // "Best price" means exactly that — the lowest pence-per-litre among open
+          // forecourts en route, not the best-value stop's price. At a full tank the
+          // best-value stop is just the nearest one, and quoting its price under this
+          // wording overstated the trip by £3.
+          const now = new Date();
+          const open = rows.filter(r => isOpen(r.s, now) !== false);
+          const price = Math.min(...(open.length ? open : rows).map(r => r.price));
+          notes.push({html:
+            `This ${route.miles.toFixed(0)} mile trip will burn about <b>${tripLitres.toFixed(0)} L</b>
+             of ${fuel} — around <b>${gbp(tripLitres * price/100)}</b> at the best price on your route.`});
+        }
+
         render(rows, {fuel, litresFill, mode:"journey", found: usable.length, notes});
         return;
       }

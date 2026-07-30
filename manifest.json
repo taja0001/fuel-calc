@@ -1,0 +1,20 @@
+{
+  "name": "Fill-Up — cheapest forecourt by true cost",
+  "short_name": "Fill-Up",
+  "description": "Find the cheapest place to fill up in the UK, ranked by true cost — pump price plus the fuel you'd burn driving there.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f1ea",
+  "theme_color": "#b8720a",
+  "categories": ["travel", "utilities"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -9,7 +9,12 @@
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-title" content="Fill-Up">
+<!-- Tints the browser UI. Matches --amber/--ground per theme, as the manifest can
+     only carry one theme_color. -->
+<meta name="theme-color" content="#b8720a" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141210" media="(prefers-color-scheme: dark)">
 <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "3eed852c87f64ec696cba231a7b87dc9"}'></script><!-- End Cloudflare Web Analytics -->
 <style>
   :root {
@@ -116,6 +121,7 @@
     padding:2px 8px;margin-top:6px;}
   .st-main .pill.shut{color:var(--warn);background:transparent;border:1px solid var(--warn);}
   .st-main .pill.mway{color:var(--ink-soft);background:transparent;border:1px solid var(--hair-strong);}
+  .st-main .pill.old{color:var(--warn);background:transparent;border:1px dashed var(--warn);}
   /* Closed forecourts stay listed — useful when planning tomorrow — but read as muted
      and can never hold the top spot. */
   .station.shut{opacity:.55;}
@@ -327,6 +333,25 @@
     }
     return "";
   }
+
+  // --- how old is this price? ---------------------------------------------------
+  // s.pu is minutes since the epoch: one number when every grade at the station moved
+  // together, or an object keyed by grade when they didn't. Absent means unknown.
+  // Roughly 3% of the feed hasn't been repriced in over a month, and presenting those
+  // with the same confidence as an hour-old price is how you drive somewhere on a
+  // figure nobody has confirmed since last season.
+  const STALE_DAYS = 14;
+  function priceAgeDays(s, fuel){
+    if (s.pu === undefined) return null;
+    const at = typeof s.pu === "number" ? s.pu : s.pu[fuel];
+    if (!Number.isFinite(at)) return null;
+    return (Date.now()/60000 - at) / 1440;
+  }
+  const ageWords = d =>
+    d >= 365 ? "over a year" :
+    d >= 60  ? Math.round(d/30) + " months" :
+    d >= 25  ? "a month" :
+    d >= 12  ? Math.round(d/7) + " weeks" : Math.round(d) + " days";
 
   let level = 25;
   let userLoc = null;
@@ -784,6 +809,8 @@
       el.className = "station" + (i === 0 ? " best" : "") + (r.shut ? " shut" : "");
       const delta = r.total - best.total;
       const opens = r.shut ? opensAt(r.s, now) : "";
+      const ageDays = priceAgeDays(r.s, ctx.fuel);
+      const stale = ageDays !== null && ageDays >= STALE_DAYS;
       el.innerHTML =
         `<div class="rank">${i+1}</div>
          <div class="st-main">
@@ -792,6 +819,7 @@
            <a class="dir" target="_blank" rel="noopener noreferrer">🧭 Directions</a>
            ${i===0 && !r.shut ? '<span class="pill">Best value</span>' : ''}
            ${r.shut ? `<span class="pill shut">Closed${opens ? " · opens " + opens : ""}</span>` : ''}
+           ${stale ? `<span class="pill old">Price ${ageWords(ageDays)} old</span>` : ''}
            ${r.s.mw ? '<span class="pill mway">Motorway services</span>' : ''}
          </div>
          <div class="st-cost">

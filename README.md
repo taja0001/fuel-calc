@@ -19,7 +19,8 @@ not just the sticker price. It runs on live UK prices from the government
 - **Location** — postcode (via postcodes.io) or current location.
 - **Private saved car** — mpg / tank / fuel type are saved in your browser only (localStorage). Never uploaded, never in the repo, invisible to anyone else.
 - **Freshness indicator** — the footer shows how long ago the prices last changed.
-- **Add to home screen** — installable web-app shortcut with its own icon.
+- **Price confidence** — a price the feed hasn't confirmed in over a fortnight is badged with its age, rather than shown as though it were current.
+- **Add to home screen** — installable web-app shortcut with its own icon, via `manifest.json` on Android and the Apple meta tags on iOS. (Chrome's full install prompt also wants a service worker, which isn't built yet — until then Android offers "Add to Home screen" from the menu.)
 - **Light & dark themes**, automatic.
 - **Privacy-friendly analytics** — Cloudflare Web Analytics (no cookies, no consent banner).
 
@@ -51,6 +52,7 @@ route for journey mode). Both are cookieless and need no key.
 | `scripts/validate-prices.mjs` | Sanity-checks `prices.json`; run by GitHub Actions on every push. |
 | `.github/workflows/validate-prices.yml` | The one live Action. Validates data only — no API access. |
 | `workflows/update-prices.yml` | **Parked, does nothing.** Not in `.github/`, so GitHub never reads it. Kept as a record of why Actions can't do the fetch. |
+| `manifest.json` | Web app manifest — name, icon, standalone display, theme colour. |
 | `icon-192.png` | App icon (browser tab + home screen). |
 
 ## The data pipeline (`scripts/build-prices.mjs`)
@@ -82,6 +84,12 @@ Three more fields ride along, all short because they're on every record:
 | `o` | Opening hours. `1` = 24/7; otherwise seven `[open, close]` pairs in minutes from midnight, Monday first. A 24-hour day is `[0, 1440]`, and `close < open` means it shuts after midnight. **Absent means the feed didn't say, and the app treats unknown as open** — better to show a forecourt that might be shut than hide one that's serving. |
 | `sm` | Present (`1`) if the feed flags it a supermarket forecourt. Omitted otherwise. |
 | `mw` | Present (`1`) if it's motorway services. Omitted otherwise. |
+| `pu` | When the price last moved, in **minutes since the epoch** (8 digits, versus 24 for an ISO string; a minute is finer than "changed 3 hours ago" needs). One number when every grade at the station moved together, or an object keyed by grade when they didn't — the fetcher picks whichever the data requires rather than assuming. Absent means no usable timestamp. |
+
+Around 3% of the feed hasn't been repriced in over a month. The app marks anything
+older than 14 days with a dashed "Price 3 weeks old" badge, so a figure nobody has
+confirmed since last season doesn't get presented with the same confidence as one from
+an hour ago. Each run logs the age spread, so a drift towards staleness is visible.
 
 Roughly half of all forecourts close at some point, so without `o` the app would
 cheerfully recommend a shut one at midnight.

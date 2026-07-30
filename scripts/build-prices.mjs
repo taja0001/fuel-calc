@@ -106,16 +106,33 @@ const GRADE = {
 };
 // Grades a station doesn't sell are left out rather than written as 0. Most sell
 // two to four of the six, and B10/HVO exist at barely 50 forecourts nationwide.
+//
+// The feed also says when each price last moved. Stations appear to reprice every
+// grade at once, so rather than assume it, collect the timestamps and let the shape
+// follow the data: one number when they agree, a per-grade object when they don't.
+// Minutes since the epoch — a minute is finer than "changed 3 hours ago" needs, and
+// it costs 8 digits instead of an ISO string's 24.
+const toMinutes = t => {
+  const ms = Date.parse(t);
+  return Number.isFinite(ms) ? Math.round(ms / 60000) : null;
+};
 function extractPrices(fuelPrices, dropped) {
-  const out = {};
+  const out = {}, stamps = {};
   for (const fp of (fuelPrices || [])) {
     const key = GRADE[String(fp.fuel_type || "").toUpperCase()];
     const price = Number(fp.price) || 0;
     if (!key || price <= 0) continue;
     if (price < PRICE_MIN || price > PRICE_MAX) { dropped.prices++; continue; }
     out[key] = price;
+    const at = toMinutes(fp.price_last_updated || fp.price_change_effective_timestamp);
+    if (at !== null) stamps[key] = at;
   }
-  return out;
+  const seen = [...new Set(Object.values(stamps))];
+  // No timestamps at all -> omit. All grades agree -> one number. Otherwise per grade.
+  const pu = seen.length === 0 ? undefined
+           : seen.length === 1 && Object.keys(stamps).length === Object.keys(out).length ? seen[0]
+           : stamps;
+  return { prices: out, pu };
 }
 
 const round5 = n => Math.round(n * 1e5) / 1e5;   // ~1 m, finer than any forecourt needs
@@ -170,6 +187,7 @@ async function main() {
   for (const p of prices) priceMap.set(p.node_id, p.fuel_prices || []);
 
   const dropped = { closed: 0, noCoords: 0, offMap: 0, noPrices: 0, prices: 0, noHours: 0 };
+  const stamp = { shared: 0, perGrade: 0, none: 0 };
   const stations = [];
   for (const s of info) {
     if (s.permanent_closure || s.temporary_closure) { dropped.closed++; continue; }
@@ -182,8 +200,11 @@ async function main() {
     }
     const fp = priceMap.get(s.node_id);
     if (!fp || !fp.length) { dropped.noPrices++; continue; }
-    const pr = extractPrices(fp, dropped);
+    const { prices: pr, pu } = extractPrices(fp, dropped);
     if (!Object.keys(pr).length) { dropped.noPrices++; continue; }
+    if (pu === undefined) stamp.none++;
+    else if (typeof pu === "number") stamp.shared++;
+    else stamp.perGrade++;
     // sm/mw are written only when true — cheaper than a 0 on every record. sm comes
     // from the feed rather than brand-name matching, which missed 30% of supermarket
     // forecourts because plenty don't trade under a supermarket's name.
@@ -195,6 +216,7 @@ async function main() {
       name: s.trading_name || "",
       postcode, lat, lng,
       prices: pr,
+      ...(pu !== undefined ? { pu } : {}),
       ...(hours !== undefined ? { o: hours } : {}),
       ...(s.is_supermarket_service_station ? { sm: 1 } : {}),
       ...(s.is_motorway_service_station ? { mw: 1 } : {}),
@@ -213,6 +235,21 @@ async function main() {
     `Opening hours: ${h24} open 24/7, ${timed} with set hours, ${dropped.noHours} unknown. ` +
     `Flags: ${stations.filter(s => s.sm).length} supermarket, ` +
     `${stations.filter(s => s.mw).length} motorway services.`
+  );
+  // How old are the prices, and does every grade at a station really move together?
+  const nowMin = Math.round(Date.now() / 60000);
+  const ages = [];
+  for (const s of stations) {
+    if (s.pu === undefined) continue;
+    for (const v of (typeof s.pu === "number" ? [s.pu] : Object.values(s.pu))) ages.push(nowMin - v);
+  }
+  const within = d => ages.filter(a => a < d * 1440).length;
+  console.log(
+    `Price timestamps: ${stamp.shared} stations share one across grades, ` +
+    `${stamp.perGrade} differ per grade, ${stamp.none} have none. ` +
+    `Age: ${within(1)} under a day, ${within(7) - within(1)} within a week, ` +
+    `${ages.length - within(7)} older, of which ${ages.filter(a => a >= 30 * 1440).length} ` +
+    `over a month.`
   );
 
   if (!stations.length) {

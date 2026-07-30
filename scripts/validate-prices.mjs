@@ -59,7 +59,10 @@ if (!Number.isFinite(generated)) {
 // Collect counts rather than one message per station, so a systemic problem reads as
 // one line instead of 8,000.
 const tally = { noName: 0, badLat: 0, badLng: 0, outsideUK: 0, noPrices: 0, oddPrice: 0,
-                unknownGrade: 0, badHours: 0 };
+                unknownGrade: 0, badHours: 0, badStamp: 0 };
+const nowMinutes = Math.round(Date.now() / 60000);
+const EPOCH_FLOOR = Math.round(Date.parse("2020-01-01T00:00:00Z") / 60000);
+const stampAges = [];
 const examples = {};
 const note = (key, detail) => { tally[key]++; if (!examples[key]) examples[key] = detail; };
 let withPrices = 0;
@@ -87,6 +90,21 @@ for (const s of stations) {
     }
   }
 
+  // Price timestamps: minutes since the epoch, as one number or an object keyed by
+  // grade. Reject anything in the future or implausibly old — a unit slip (seconds or
+  // milliseconds instead of minutes) would land far outside this window.
+  if (s.pu !== undefined) {
+    const vals = typeof s.pu === "number" ? [s.pu]
+               : (s.pu && typeof s.pu === "object") ? Object.values(s.pu) : null;
+    if (!vals || !vals.length) note("badStamp", `${where}: ${JSON.stringify(s.pu).slice(0, 50)}`);
+    else for (const v of vals) {
+      if (!Number.isFinite(v) || v > nowMinutes + 60 || v < EPOCH_FLOOR) {
+        note("badStamp", `${where}: ${v}`); break;
+      }
+      stampAges.push((nowMinutes - v) / 1440);
+    }
+  }
+
   const prices = s.prices;
   if (!prices || typeof prices !== "object") { note("noPrices", where); continue; }
   let any = false;
@@ -110,6 +128,7 @@ const LABEL = {
   oddPrice: `prices outside ${PRICE.min}-${PRICE.max}p per litre`,
   unknownGrade: "unrecognised fuel grades",
   badHours: "malformed opening hours",
+  badStamp: "price timestamps in the future or absurdly old",
 };
 // A handful of bad records is normal in an 8,000-row government feed; a systemic
 // problem is not. Only fail past 1% of the file.
@@ -133,6 +152,14 @@ console.log(`  opening hours: ${h24} open 24/7, ${timed} with set hours, ` +
             `${stations.length - h24 - timed} unknown; ` +
             `${stations.filter(s => s.sm).length} supermarket, ` +
             `${stations.filter(s => s.mw).length} motorway services`);
+if (stampAges.length) {
+  const under = d => stampAges.filter(a => a < d).length;
+  console.log(`  price ages: ${under(1)} under a day, ${under(7) - under(1)} within a week, ` +
+              `${stampAges.length - under(7)} older (${stampAges.filter(a => a >= 30).length} ` +
+              `over a month), oldest ${Math.round(Math.max(...stampAges))} days`);
+} else {
+  console.log(`  price ages: no timestamps present`);
+}
 if (problems.length) {
   console.error(`\n${FILE} failed validation:`);
   for (const p of problems) console.error(`  - ${p}`);

@@ -7,6 +7,23 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ## 2026-07-30
 
+**A failed refresh can no longer wipe the real prices.** Resuming the home-screen app
+with no signal and an evicted cache could replace all ~7,976 stations with the 8-station
+sample set, then invite a re-search against the fakes. A failed refresh now keeps what it
+has and marks the footer offline. Found by reviewing the interaction between the two
+fixes below. (`fe1bc88`)
+
+**The freshness label stays honest.** "Prices updated 8m ago" was computed once and
+frozen, and a session never refetched — so an iOS home-screen app resumed from memory
+showed older prices *and* a wrong label, disagreeing with Safari on the same phone. The
+label now recomputes every minute, and returning to the foreground rechecks for newer
+prices, telling you if results on screen are out of date rather than swapping them
+silently. (`10a1149`)
+
+**Formal attribution.** The footer now carries the Open Government Licence v3.0 wording
+and credits OpenStreetMap alongside OSRM — the latter is required by ODbL and naming OSRM
+alone didn't discharge it. (`9aa5476`)
+
 **Open now.** Just under half of UK forecourts close at some point — 4,025 are 24/7,
 3,527 aren't. A closed one is now greyed out, badged with when it opens, and can never be
 ranked best value. Before this, a search at midnight could confidently recommend

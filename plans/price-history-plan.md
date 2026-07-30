@@ -1,5 +1,14 @@
 # Plan: doing something with the price history
 
+> **⚠ Partly superseded, 2026-07-30.** This plan assumes change times must be inferred
+> by diffing hourly snapshots — which is why it treats sampling gaps as fatal, calls
+> hour-of-day analysis impossible, and sets a September revisit date. Commit `0d844e0`
+> then captured `pu` (`price_last_updated`), which gives the exact minute each price
+> moved straight from the feed. Gaps no longer matter, hour-of-day is answerable now,
+> and the timeline is earlier than stated below. Rewriting this is item 5 in
+> [backlog.md](backlog.md). Everything about **what to publish** and **where to compute
+> it** still holds.
+
 Every hour the Pi commits `data/prices.json` only when a price actually changed. That
 makes the git history an accidental archive of every price move on ~8,000 UK
 forecourts. This is the plan for using it.

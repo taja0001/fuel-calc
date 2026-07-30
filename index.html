@@ -173,6 +173,7 @@
   footer a{color:var(--amber);}
   #freshness{font-weight:600;margin-bottom:6px;}
   #freshness.stale{color:var(--warn);}
+  footer .ogl{margin-top:8px;font-size:11px;opacity:.75;}
   .spin{display:inline-block;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;
     border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px;margin-right:6px;}
   @keyframes sp{to{transform:rotate(360deg);}}
@@ -274,7 +275,11 @@
   <footer id="foot">
     <div id="freshness"></div>
     Prices from the UK Government <a href="https://www.fuel-finder.service.gov.uk" target="_blank" rel="noopener noreferrer">Fuel Finder</a> scheme.
-    Driving distances via <a href="https://project-osrm.org" target="_blank" rel="noopener noreferrer">OSRM</a> (estimated if routing is unavailable). UK gallons.
+    Driving distances via <a href="https://project-osrm.org" target="_blank" rel="noopener noreferrer">OSRM</a>, using
+    <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> data
+    (estimated if routing is unavailable). UK gallons.
+    <div class="ogl">Contains public sector information licensed under the
+      <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" target="_blank" rel="noopener noreferrer">Open Government Licence v3.0</a>.</div>
   </footer>
 </div>
 

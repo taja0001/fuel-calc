@@ -9,6 +9,43 @@ which is parked separately.
 
 ---
 
+## 0. Replace the OSRM demo server — blocks monetisation
+
+**This is the gate on charging for anything.** Every road distance in the app — the
+`/table` calls in "Near me", and both the route and the detour table in journey mode —
+goes through `router.project-osrm.org`. That's the OSRM project's **public demo server**:
+provided for testing and demonstration, no SLA, no commercial provision, and no support
+if it slows down or disappears. Fine for a hobby project; not something to put revenue on
+top of.
+
+Options:
+
+| Option | Cost | Notes |
+|---|---|---|
+| **Self-host OSRM** | A few pounds a month on a VPS with a UK OSM extract | Cheapest at volume, but yours to maintain and keep updated. |
+| **Paid routing API** (Mapbox, OpenRouteService, Google) | Per-request | Simplest, but the bill grows with success — and the app makes up to 91 coordinates per search. |
+| **Precompute** | Storage only | Distances between a user and ~8,000 fixed points can't be precomputed, but a cached grid of common origins might cut most calls. Unproven idea. |
+
+Worth knowing the app already degrades gracefully: if routing fails it falls back to
+straight-line × 1.3, so an outage makes answers less accurate rather than breaking the
+app. That's what makes this a business risk rather than an availability one.
+
+**Not a blocker: the fuel data itself.** Checked 2026-07-30 —
+[The Motor Fuel Price (Open Data) Regulations 2025](https://www.legislation.gov.uk/uksi/2025/1356/introduction/made)
+make this a statutory open-data scheme, published under **Open Government Licence v3.0**,
+which permits commercial exploitation with attribution. The
+[official guidance](https://www.gov.uk/guidance/access-the-latest-fuel-prices-and-forecourt-data-via-api-or-email)
+names "comparison websites" and "app and website developers" among those who may use it.
+Rate limits are **100 requests per minute** and **1 concurrent request** per client; a
+fetcher run makes 34 requests sequentially, once an hour, so there's large headroom — and
+because prices are served from a static file, user growth adds no API calls at all.
+
+`postcodes.io` is the same class of dependency as OSRM: free, Open Government Licence, but
+with fair-use expectations rather than a commercial tier. At volume, self-host from the ONS
+Postcode Directory (free, and just a lookup table).
+
+---
+
 ## 1. Saved home and work postcodes
 
 mpg, tank size and fuel type already persist to `localStorage` (see the bottom of the

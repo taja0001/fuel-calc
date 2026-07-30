@@ -53,6 +53,7 @@ route for journey mode). Both are cookieless and need no key.
 | `scripts/validate-prices.mjs` | Sanity-checks `prices.json`; run by GitHub Actions on every push. |
 | `.github/workflows/validate-prices.yml` | The one live Action. Validates data only — no API access. |
 | `workflows/update-prices.yml` | **Parked, does nothing.** Not in `.github/`, so GitHub never reads it. Kept as a record of why Actions can't do the fetch. |
+| `CHANGELOG.md` | What's changed and when. |
 | `manifest.json` | Web app manifest — name, icon, standalone display, theme colour. |
 | `sw.js` | Service worker: caches the shell, keeps the last prices for offline. |
 | `icon-192.png` | App icon (browser tab + home screen). |

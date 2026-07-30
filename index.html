@@ -171,6 +171,7 @@
   .brand-row.open .chev{transform:rotate(180deg);}
   .brand-sub{display:flex;flex-direction:column;gap:6px;margin:-2px 0 8px;padding-left:6px;}
   .brand-sub[hidden]{display:none;}
+  .substation.shut{opacity:.55;}
   .substation{display:flex;justify-content:space-between;align-items:center;gap:10px;
     font-size:12.5px;padding:8px 11px;border-left:2px solid var(--hair-strong);
     background:var(--panel-2);border-radius:8px;}
@@ -912,11 +913,18 @@
     res.innerHTML = "";
 
     // At 3am in a quiet area everything can be shut, and the usual wording would then
-    // promise an open alternative that isn't there.
+    // promise an open alternative that isn't there. And in a dense area the closed ones
+    // usually all rank below the 15 shown — saying "greyed out" about rows nobody can
+    // see reads as a bug (it was reported as one).
+    const shutVisible = rows.slice(0, 15).filter(r => r.shut).length;
     const openNotes = !shutCount ? [] : shutCount === rows.length
       ? [{warn:true, html:
           `Every forecourt here is <b>closed right now</b>. The cheapest is still shown —
            check when it opens before setting off.`}]
+      : shutVisible === 0
+      ? [{html:
+          `${shutCount === 1 ? "One nearby forecourt is" : shutCount + " nearby forecourts are"} <b>closed right now</b> —
+           open ones rank higher, so none made the list below.`}]
       : [{html:
           `${shutCount === 1 ? "One forecourt is" : shutCount + " forecourts are"} <b>closed right now</b> —
            still listed, greyed out, and never ranked best value.`}];
@@ -1026,15 +1034,17 @@
         const sub = document.createElement("div");
         sub.className = "brand-sub";
         sub.hidden = true;
-        e.rows.slice().sort((a,b) => a.total - b.total).forEach(r => {
+        // Open branches first, then closed marked as such — the brand lists show every
+        // row, so this is where a closed forecourt is guaranteed actually visible.
+        e.rows.slice().sort((a,b) => (a.shut ? 1 : 0) - (b.shut ? 1 : 0) || a.total - b.total).forEach(r => {
           const ss = document.createElement("div");
-          ss.className = "substation";
+          ss.className = "substation" + (r.shut ? " shut" : "");
           ss.innerHTML =
             `<span class="sn"></span>
              <span class="sp"><span>${gbp(r.total)}</span>
                <a class="dir" target="_blank" rel="noopener noreferrer" title="Directions">🧭</a></span>`;
           ss.querySelector(".sn").textContent =
-            `${label(r.s)} · ${r.price.toFixed(1)}p · ${r.dist.toFixed(1)} mi`;
+            `${label(r.s)} · ${r.price.toFixed(1)}p · ${r.dist.toFixed(1)} mi${r.shut ? " · closed" : ""}`;
           ss.querySelector(".dir").href =
             `https://www.google.com/maps/dir/?api=1&destination=${r.s.lat},${r.s.lng}&travelmode=driving`;
           sub.appendChild(ss);

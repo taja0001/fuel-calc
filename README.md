@@ -20,7 +20,8 @@ not just the sticker price. It runs on live UK prices from the government
 - **Private saved car** — mpg / tank / fuel type are saved in your browser only (localStorage). Never uploaded, never in the repo, invisible to anyone else.
 - **Freshness indicator** — the footer shows how long ago the prices last changed.
 - **Price confidence** — a price the feed hasn't confirmed in over a fortnight is badged with its age, rather than shown as though it were current.
-- **Add to home screen** — installable web-app shortcut with its own icon, via `manifest.json` on Android and the Apple meta tags on iOS. (Chrome's full install prompt also wants a service worker, which isn't built yet — until then Android offers "Add to Home screen" from the menu.)
+- **Works with no signal** — opens instantly from cache and keeps the last prices you had, which is the situation you're actually in when deciding where to fill up. Location search still works offline; postcode lookup can't, and says so.
+- **Add to home screen** — installable web-app shortcut with its own icon, via `manifest.json` and `sw.js` on Android and the Apple meta tags on iOS.
 - **Light & dark themes**, automatic.
 - **Privacy-friendly analytics** — Cloudflare Web Analytics (no cookies, no consent banner).
 
@@ -53,6 +54,7 @@ route for journey mode). Both are cookieless and need no key.
 | `.github/workflows/validate-prices.yml` | The one live Action. Validates data only — no API access. |
 | `workflows/update-prices.yml` | **Parked, does nothing.** Not in `.github/`, so GitHub never reads it. Kept as a record of why Actions can't do the fetch. |
 | `manifest.json` | Web app manifest — name, icon, standalone display, theme colour. |
+| `sw.js` | Service worker: caches the shell, keeps the last prices for offline. |
 | `icon-192.png` | App icon (browser tab + home screen). |
 
 ## The data pipeline (`scripts/build-prices.mjs`)
@@ -118,6 +120,28 @@ Each run logs what it discarded, so a sudden jump is visible in `fuel.log`.
 | `FF_MIN_RATIO` | no | Minimum share of the previous run's station count. Default `0.9`. |
 | `FF_ALLOW_SHRINK` | no | Set to `1` to publish a genuine large drop anyway. |
 | `FF_BASE` | no | Override the API base URL. |
+
+## Offline (`sw.js`)
+
+Two jobs, so two strategies:
+
+| What | Strategy | Why |
+|---|---|---|
+| Shell (`index.html`, icon, manifest) | stale-while-revalidate | Opens with no network round-trip. Changes propagate on the next load. |
+| `data/prices.json` | network-first, cache fallback | Prices move hourly; serving them cache-first would mean confidently quoting yesterday's. |
+| postcodes.io, OSRM, analytics | not touched | Cross-origin, and replaying a cached route or postcode lookup would be plain wrong. |
+
+When the network fails and the worker falls back, it adds an `X-From-Cache` header so the
+app can say **"Offline · prices from 1h 28m ago"** rather than guessing. It can't use
+`navigator.onLine` for this — that reports whether a network interface is up, and stays
+`true` on a cell that carries no data or when the server itself is down.
+
+What still works offline: opening the app, all ~8,000 cached prices, and searching by
+current location. Distances fall back to straight-line × 1.3 because OSRM is
+unreachable. Postcode search can't work at all, and says so, pointing at the 📍 button.
+
+**`VERSION` in `sw.js` only needs bumping to force old caches out** — if the precache
+list or these strategies change. Ordinary edits to `index.html` propagate by themselves.
 
 ## Validation (`scripts/validate-prices.mjs`)
 

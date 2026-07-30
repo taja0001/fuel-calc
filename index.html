@@ -505,6 +505,10 @@
       // repeat visits inside the hour cost nothing.
       const r = await fetch("data/prices.json", {cache:"no-cache"});
       if (!r.ok) throw 0;
+      // The service worker sets this when the network failed and it fell back to the
+      // last copy it had. Far more reliable than navigator.onLine, which stays true
+      // on a cell that carries no data.
+      servedFromCache = r.headers.get("X-From-Cache") === "1";
       const d = await r.json();
       stations = d.stations || [];
       if (!stations.length) throw 0;
@@ -522,6 +526,7 @@
   // rather than that prices happened to hold steady.
   const STALE_HOURS = 3;
   let staleNote = "";
+  let servedFromCache = false;
 
   function showFreshness(){
     const el = $("freshness");
@@ -536,15 +541,27 @@
     else if (mins < 60) ago = mins + "m ago";
     else { const h = Math.floor(mins/60), m = mins % 60; ago = h + "h" + (m ? " " + m + "m" : "") + " ago"; }
     const stale = mins >= STALE_HOURS * 60;
-    el.classList.toggle("stale", stale);
-    el.textContent = (stale ? "Prices last updated " : "Prices updated ") + ago;
-    if (stale) staleNote =
+    el.classList.toggle("stale", stale || servedFromCache);
+    el.textContent = (servedFromCache ? "Offline · prices from " : stale ? "Prices last updated " : "Prices updated ") + ago;
+    // Same symptom, two different causes. Serving from cache is the app working as
+    // designed, so say so plainly rather than implying the feed has broken.
+    if (servedFromCache) staleNote =
+      `You're <b>offline</b> — these are the last prices from when you had signal,
+       <b>${ago}</b>. Still worth trusting for comparison, but check at the pump.`;
+    else if (stale) staleNote =
       `These prices were last updated <b>${ago}</b> — the hourly feed looks to have stopped.
        Treat them as a guide and check the price at the pump.`;
   }
 
   async function geocodePostcode(pc){
-    const r = await fetch("https://api.postcodes.io/postcodes/" + encodeURIComponent(pc.trim()));
+    let r;
+    try {
+      r = await fetch("https://api.postcodes.io/postcodes/" + encodeURIComponent(pc.trim()));
+    } catch {
+      // Offline, the prices are cached but postcodes.io isn't reachable. Without this
+      // the user just saw the browser's raw "Failed to fetch".
+      throw new Error("Can't look up a postcode while offline — tap 📍 to use your location instead.");
+    }
     if (!r.ok) throw new Error("Postcode not found — check it and try again.");
     const d = await r.json();
     return {lat:d.result.latitude, lng:d.result.longitude, label:d.result.postcode};
@@ -960,4 +977,10 @@
   }));
 
   loadStations().then(showFreshness);
+
+  // Opens instantly and keeps working with no signal — see sw.js for the strategy.
+  // Registered after load so it never competes with the first paint or the price fetch.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  }
 </script>

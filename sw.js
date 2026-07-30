@@ -65,12 +65,31 @@ async function networkFirst(request) {
   }
 }
 
-// Stale-while-revalidate: answer from cache now, refresh in the background.
+// Stale-while-revalidate: answer from cache now, refresh in the background. When the
+// refresh brings back a DIFFERENT page than the one just served, tell the open tabs —
+// otherwise nobody ever learns the app updated: the shell is one load behind by design,
+// and an iOS home-screen app resumes from memory without loading at all, so a user can
+// sit on an old version indefinitely and report already-fixed bugs (it happened).
+const isPage = url => /\/(index\.html)?$/.test(new URL(url).pathname);
+function versionOf(res) {
+  return res.headers.get("etag") || res.headers.get("last-modified") ||
+         res.headers.get("content-length") || "";
+}
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(SHELL);
   const hit = await cache.match(request, {ignoreSearch: true});
   const update = fetch(request)
-    .then(res => { if (res && res.ok) cache.put(request, res.clone()); return res; })
+    .then(async res => {
+      if (res && res.ok) {
+        const changed = hit && isPage(request.url) && versionOf(res) !== versionOf(hit);
+        await cache.put(request, res.clone());
+        if (changed) {
+          const clients = await self.clients.matchAll({type: "window"});
+          for (const c of clients) c.postMessage({type: "shell-updated"});
+        }
+      }
+      return res;
+    })
     .catch(() => undefined);
   return hit || (await update) || Response.error();
 }

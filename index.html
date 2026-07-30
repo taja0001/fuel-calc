@@ -172,6 +172,10 @@
   .brand-sub{display:flex;flex-direction:column;gap:6px;margin:-2px 0 8px;padding-left:6px;}
   .brand-sub[hidden]{display:none;}
   .substation.shut{opacity:.55;}
+  #updateToast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:50;
+    appearance:none;border:1px solid var(--amber);background:var(--panel);color:var(--amber);
+    font:inherit;font-size:13.5px;font-weight:700;padding:10px 18px;border-radius:22px;
+    box-shadow:var(--shadow);cursor:pointer;}
   .substation{display:flex;justify-content:space-between;align-items:center;gap:10px;
     font-size:12.5px;padding:8px 11px;border-left:2px solid var(--hair-strong);
     background:var(--panel-2);border-radius:8px;}
@@ -1117,6 +1121,9 @@
     showFreshness();                                    // the label may have drifted
     if (Date.now() - lastChecked < 5 * 60000) return;   // don't hammer on every glance
     lastChecked = Date.now();
+    // Nudge the shell too: a resumed home-screen app never navigates, so this is its
+    // only chance to notice the app itself has updated (the worker compares and tells us).
+    fetch("index.html", {cache: "no-cache"}).catch(() => {});
     const before = dataGeneratedAt;
     await loadStations(true);
     showFreshness();
@@ -1137,5 +1144,19 @@
   // Registered after load so it never competes with the first paint or the price fetch.
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+    // The worker announces when its background refresh found a newer page than the one
+    // being read. Without this the shell is one load behind forever on a home-screen
+    // app that resumes from memory — old versions lingered for hours and got old bugs
+    // re-reported. One tap picks up the already-cached new version.
+    navigator.serviceWorker.addEventListener("message", e => {
+      if (e.data && e.data.type === "shell-updated" && !$("updateToast")) {
+        const t = document.createElement("button");
+        t.id = "updateToast";
+        t.type = "button";
+        t.textContent = "App updated — tap to refresh";
+        t.addEventListener("click", () => location.reload());
+        document.body.appendChild(t);
+      }
+    });
   }
 </script>

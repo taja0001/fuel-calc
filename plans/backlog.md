@@ -4,8 +4,9 @@ Everything known-but-not-done, as of **2026-07-30**. Nothing here is urgent; the
 in a good state. Items are roughly in the order I'd tackle them, not in priority order —
 see the note at the bottom of each for what it's actually worth.
 
-Also see [price-history-plan.md](price-history-plan.md) for the price-history work,
-which is parked separately.
+Also see [price-history-plan.md](price-history-plan.md) for the price-history work, and
+[monetisation.md](monetisation.md) for where this is all heading — including the SEO gap,
+which is the largest single opportunity and needs `location.city` captured to start.
 
 ---
 
@@ -130,7 +131,7 @@ superseded notice is already at the top of that file.*
 | **`location.country` from the feed** | Unusable without heavy normalising — `ENGLAND` 3,942 vs `England` 1,132, plus 723 `UNITED KINGDOM`, 697 blank, 67 `E`, 10 `S`. ~18% ambiguous. Postcode prefixes give regions reliably and are already present. |
 | **`public_phone_number`** | Nobody rings a petrol station. |
 | **`amenities`** | Real data (`car_wash` 3,580, `lpg_pumps` 270, `adblue_pumps` 1,081) but no clear job in a price app. Possible filter later. |
-| **`location.city`** | 97.2% populated and would give tidier labels — "Tesco, Harrogate" beats "TESCO HARROGATE - PETROL FILLING STATION" — but purely cosmetic. |
+| ~~**`location.city`**~~ | ~~Purely cosmetic.~~ **Reversed 2026-07-30** — it's the prerequisite for town-level SEO pages, which is the main growth lever in [monetisation.md](monetisation.md). Populated on 97.2% of records. Capture it. |
 
 ## Constraint to keep in mind
 

@@ -18,6 +18,13 @@
 <meta property="og:title" content="Fill-Up — cheapest forecourt by true cost">
 <meta property="og:description" content="The cheapest fill-up near you or on your route, counting the fuel you burn getting there.">
 <meta property="og:type" content="website">
+<!-- Open the connections to the two services a search needs while the user is still
+     typing their postcode — DNS, TCP and TLS cost 100-300ms each on mobile, paid at
+     the worst moment otherwise: right after tapping search. crossorigin because both
+     are called via fetch(), and CORS requests only reuse a connection opened in
+     anonymous mode. -->
+<link rel="preconnect" href="https://api.postcodes.io" crossorigin>
+<link rel="preconnect" href="https://router.project-osrm.org" crossorigin>
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">

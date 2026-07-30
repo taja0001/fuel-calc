@@ -122,6 +122,23 @@ superseded notice is already at the top of that file.*
 
 ---
 
+## Robustness — needs Thomas, not code
+
+Recorded 2026-07-31 alongside building the CI tests:
+
+1. **Commit the Pi's scripts.** `update-fuel-prices.sh` and `net-watchdog.sh` exist only
+   on the SD card — the component most likely to die. The README describes them but
+   doesn't contain them. Paste sanitised copies into a `pi/` directory (secrets stay in
+   `secrets.env`, recoverable from the GOV.UK portal) and an SD death becomes copy-paste
+   instead of reconstruction from prose.
+2. **Branch-protect `main`.** The git history IS the price archive — irreplaceable at
+   any price and growing hourly. Settings → Branches → block force pushes and deletions.
+   Two clicks; given three divergence incidents on 2026-07-30, not theoretical.
+3. **Fire the healthchecks.io test notification.** The ping works, but no alert email
+   has ever actually been sent (the one real outage recovered inside the grace window).
+   Until the "Send test notification" button is pressed, the dead-man's switch is a
+   switch nobody has heard ring.
+
 ## Deliberately rejected — don't re-propose without new information
 
 | Idea | Why not |

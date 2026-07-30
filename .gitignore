@@ -1,2 +1,5 @@
 # Playwright MCP scratch output (screenshots, snapshots, console logs)
 .playwright-mcp/
+
+# dev tooling only — the app has no dependencies
+node_modules/

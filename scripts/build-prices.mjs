@@ -7,6 +7,7 @@
 // Node 20+ (built-in global fetch). Env needed: FF_CLIENT_ID, FF_CLIENT_SECRET.
 
 import { writeFile, mkdir, readFile } from "node:fs/promises";
+import { pathToFileURL } from "node:url";
 
 const CLIENT_ID     = process.env.FF_CLIENT_ID;
 const CLIENT_SECRET = process.env.FF_CLIENT_SECRET;
@@ -14,11 +15,6 @@ const BASE = process.env.FF_BASE || "https://www.fuel-finder.service.gov.uk/api/
 const TOKEN_URL = `${BASE}/oauth/generate_access_token`;
 const INFO_URL  = `${BASE}/pfs`;
 const PRICE_URL = `${BASE}/pfs/fuel-prices`;
-
-if (!CLIENT_ID || !CLIENT_SECRET) {
-  console.error("Missing FF_CLIENT_ID / FF_CLIENT_SECRET env vars.");
-  process.exit(1);
-}
 
 // Guard against publishing a truncated fetch. A run holding fewer than this share of
 // last run's stations is rejected; FF_ALLOW_SHRINK=1 overrides for a genuine drop.
@@ -177,6 +173,10 @@ function locOf(info) {
 }
 
 async function main() {
+  if (!CLIENT_ID || !CLIENT_SECRET) {
+    console.error("Missing FF_CLIENT_ID / FF_CLIENT_SECRET env vars.");
+    process.exit(1);
+  }
   const token = await getToken();
 
   console.log("Fetching station info...");
@@ -307,4 +307,11 @@ async function main() {
   await heartbeat();
 }
 
-main().catch(e => { console.error(e); process.exit(1); });
+// Exported for the unit tests; the env check lives in main() so importing this file
+// costs nothing and touches nothing. Run only when invoked directly — on the Pi,
+// exactly as before.
+export { extractPrices, hoursOf, toMinutes, locOf, round5 };
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(e => { console.error(e); process.exit(1); });
+}

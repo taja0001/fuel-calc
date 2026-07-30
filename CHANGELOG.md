@@ -5,6 +5,18 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ---
 
+## 2026-07-31
+
+**Tests, at last.** Twenty of them, run by GitHub Actions on every push: unit tests for
+the fetcher's pure functions against shapes the real feed has sent, and Playwright
+driving the actual app in a real browser — mocked routing, pinned clock — asserting
+everything that previously regressed or nearly regressed by hand. Three bugs on
+2026-07-30 alone lived in exactly the places only regression tests catch. Plus a lint
+job for the constraints that shipped bugs: the charset-within-1024-bytes rule and all
+scripts parsing. The app itself remains dependency-free; Playwright is dev tooling only.
+
+---
+
 ## 2026-07-30
 
 **Journey mode says what the trip itself will cost.** "This 280 mile trip will burn

@@ -1,0 +1,50 @@
+name: Test
+
+# Lints the constraints that have actually shipped bugs (charset position, parse
+# errors) and drives the real app in a real browser against fixture data — the
+# open-now partition, brand folding, slider arithmetic, the failed-refresh fallback.
+# Every scenario in tests/ regressed or nearly regressed once by hand; this makes
+# "Thomas happened to test it" into "it cannot silently regress".
+#
+# The app itself has no dependencies; package.json is dev tooling only.
+
+on:
+  push:
+    paths:
+      - "index.html"
+      - "sw.js"
+      - "manifest.json"
+      - "scripts/**"
+      - "tests/**"
+      - "package*.json"
+      - ".github/workflows/test.yml"
+  pull_request:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Lint (charset position, script parses)
+        run: |
+          node --check scripts/build-prices.mjs
+          node --check scripts/validate-prices.mjs
+          node scripts/check-app.mjs
+
+      - name: Install dev dependencies
+        run: npm ci
+
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Unit + browser tests
+        run: npm test

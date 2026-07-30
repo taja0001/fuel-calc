@@ -154,6 +154,30 @@ even an iOS home-screen app resumed from memory — which never navigates — fi
 Before that pill existed, users sat on old versions for hours and re-reported
 already-fixed bugs.
 
+## Tests
+
+`npm install` once, then `npm test` (or `PW_CHANNEL=chrome npm test` to reuse the
+Chrome you already have instead of downloading Chromium). Two layers, both run by
+GitHub Actions on every push that touches the app:
+
+- **Unit** — the fetcher's pure functions against shapes the real feed has actually
+  sent: the 00:00–00:00 junk hours, pounds-instead-of-pence prices, grades that
+  reprice independently.
+- **Browser** — Playwright drives the real `index.html` against fixture data with the
+  external services mocked and the clock pinned to 23:15, asserting the things that
+  once regressed by hand: a closed forecourt with the lowest total never taking the
+  top spot, the greying and pills, brand folding ("Kirkby Motors" is not Moto), slider
+  eighths reaching the maths, and a failed refresh keeping real data rather than
+  swapping in samples.
+
+`npm run lint` checks the constraints that have actually shipped bugs: the charset
+declaration staying inside the first 1024 bytes (past it, every £ renders as Â£ on any
+host that sends no charset header), and the inline script, `sw.js` and pipeline
+scripts all parsing.
+
+**The app itself still has no dependencies** — `package.json` is dev tooling only, and
+Playwright never ships to a visitor.
+
 ## Validation (`scripts/validate-prices.mjs`)
 
 `.github/workflows/validate-prices.yml` runs this on every push that touches

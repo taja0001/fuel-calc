@@ -280,19 +280,28 @@
   };
 
   // Fold brand-name variants (SHELL/Shell, BP/BP OIL UK/BP HARVEST ENERGY, ...) into one.
+  // Matched as whole words, tolerating a plural or possessive: MORRISONS and Sainsbury's
+  // are the brand, but "Kirkby Motors" is not Moto, "Shellknowe Garage" is not Shell and
+  // "Esson's Garage" is not Esso. Substring matching folded 27 independent garages into
+  // the wrong brands, two dozen of them into Moto by way of the word "Motors".
+  // More specific keys first, so MOTOR FUEL beats MOTO and MFG.
   const BRAND_CANON = [
     ["bp","BP"], ["shell","Shell"], ["esso","Esso"], ["texaco","Texaco"], ["jet","Jet"],
     ["gulf","Gulf"], ["murco","Murco"], ["valero","Valero"], ["applegreen","Applegreen"],
-    ["ascona","Ascona"], ["harvest energy","Harvest Energy"], ["moto","Moto"], ["rontec","Rontec"],
-    ["motor fuel","MFG"], ["mfg","MFG"],
+    ["ascona","Ascona"], ["harvest energy","Harvest Energy"],
+    ["motor fuel","MFG"], ["mfg","MFG"], ["moto","Moto"], ["rontec","Rontec"],
     ["tesco","Tesco"], ["asda","Asda"], ["sainsbury","Sainsbury's"], ["morrison","Morrisons"], ["costco","Costco"]
-  ];
+  ].map(([key, disp]) => [
+    new RegExp(`(^|[^a-z0-9])${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}('?s)?([^a-z0-9]|$)`, "i"),
+    disp
+  ]);
   function canonBrand(raw){
     const x = (raw || "").trim();
     if (!x) return "Other";
-    const lx = x.toLowerCase();
-    for (const [key, disp] of BRAND_CANON){ if (lx.includes(key)) return disp; }
-    return x.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); // title-case unknown brands
+    for (const [re, disp] of BRAND_CANON){ if (re.test(x)) return disp; }
+    // Title-case an unrecognised brand, but don't capitalise after an apostrophe —
+    // \b treats one as a word break, which turned "Esson's Garage" into "Esson'S".
+    return x.toLowerCase().replace(/(^|[^a-z0-9'])([a-z])/g, (_, before, c) => before + c.toUpperCase());
   }
 
   // --- opening hours ----------------------------------------------------------

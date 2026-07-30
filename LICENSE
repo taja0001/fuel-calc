@@ -1,0 +1,39 @@
+Fill-Up — https://fuel.thomasainsworth.co.uk
+Copyright (c) 2026 Thomas Ainsworth. All rights reserved.
+
+
+THE CODE
+
+No permission is granted to any person to use, copy, modify, merge, publish,
+distribute, sublicense or sell this software, or any substantial portion of it.
+
+This repository is public, and a web app's source is necessarily delivered to
+every browser that loads the page. Neither of those facts is a grant of licence.
+
+Nothing here affects what copyright law already permits regardless: reading the
+source, and reproducing short excerpts for comment, criticism, review, teaching
+or private study. Those are not mine to give or withhold.
+
+If you want to use any of this, ask.
+
+
+THE DATA — NOT COVERED BY THE ABOVE
+
+data/prices.json is derived from the UK Government's Fuel Finder scheme and is
+published under the Open Government Licence v3.0. It may be reused under those
+terms, which require attribution to the source. Nothing in this notice restricts
+that, and nothing in it could.
+
+
+THIRD-PARTY SERVICES
+
+The app calls postcodes.io (Open Government Licence v3.0) and the OSRM demo
+server (OpenStreetMap data, Open Database Licence). Those carry their own terms,
+which apply to you directly if you call them.
+
+
+NO WARRANTY
+
+Provided as is, without warranty of any kind, express or implied. Fuel prices
+come from a third-party feed and may be wrong, stale or missing. Check the price
+at the pump.

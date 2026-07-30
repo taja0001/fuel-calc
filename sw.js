@@ -1,4 +1,5 @@
 // sw.js — makes the app open instantly and keep working with no signal.
+// Copyright (c) 2026 Thomas Ainsworth. All rights reserved — see LICENSE.
 //
 // Two different jobs, so two different strategies:
 //

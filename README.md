@@ -243,10 +243,27 @@ its own HTTPS certificate. (Proxying through Cloudflare blocks the cert.)
 - Analytics: the Cloudflare beacon `<script>` is in the `<head>` of `index.html`;
   stats appear under Cloudflare → Web Analytics.
 
-## Data, services & licence
+## Data & services
 
 - Fuel prices: UK Government **Fuel Finder** scheme (Open Government Licence v3.0).
 - Postcode lookup: **postcodes.io** (Open Government Licence).
 - Distances & routing: **OSRM** public demo (OpenStreetMap data, ODbL). Distances
   fall back to a straight-line × 1.3 estimate if OSRM is unavailable.
 - Calculations use UK gallons (1 gallon = 4.54609 litres).
+
+## Licence
+
+**The code is not open source.** Copyright © 2026 Thomas Ainsworth, all rights
+reserved — see [LICENSE](LICENSE). The repository is public and the app's source
+reaches every browser that loads it, because that's how the web works; neither is a
+grant of permission. Want to use some of it? Ask.
+
+**The data is a different matter.** `data/prices.json` derives from the Fuel Finder
+scheme and stays under Open Government Licence v3.0, reusable with attribution. That
+isn't mine to restrict.
+
+Worth being realistic about what a licence does and doesn't do here: the code is the
+easy part to copy and the least valuable. Reproducing this app also needs a Fuel Finder
+registration, a *residential* connection to fetch from — the API's firewall blocks
+datacenter IPs, so it won't run on a VPS — hourly uptime, and a price history that only
+accumulates with time.

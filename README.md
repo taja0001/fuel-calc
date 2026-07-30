@@ -12,7 +12,10 @@ not just the sticker price. It runs on live UK prices from the government
 - **True-cost ranking** — forecourts scored on fill cost plus the fuel to drive there (and back), using **real road distances**, so a cheap-but-far station is judged fairly against a dearer one nearby.
 - **Two modes:**
   - **Near me** — cheapest fill-ups within a radius of a postcode or your current location.
-  - **Plan a journey** — enter a start and destination and it finds the cheapest fill-up **on the way**, ranked by pump price plus the small detour off your route.
+  - **Plan a journey** — enter a start and destination and it finds the cheapest fill-up **on the way**, ranked by pump price plus the small detour off your route. It also says what the trip itself will cost: "this 280 mile trip will burn about 33 L — around £50 at the best price on your route".
+- **Minutes, not just miles** — every distance carries drive time ("2.6 mi · 7 min away"), from the same routing requests. When routing is unavailable and distances are estimates, minutes are omitted rather than invented.
+- **What the search saved you** — "£0.75 cheaper than your nearest (Sainsbury's · 1.4 mi · 4 min)": the comparison against just driving to the closest open forecourt, which is what people do without the app.
+- **Fuel level like the dash shows it** — quick buttons for the quarters, plus a slider marked like a real gauge (0–1, ticks at every eighth) with a live litres-to-fill readout. Feeds the fill cost and the journey range estimate alike.
 - **Open now** — just under half of UK forecourts close at some point, so a closed one is greyed out, marked with when it opens, and can never be ranked best value. Motorway services are labelled too.
 - **Cheapest by brand** — two lists, Supermarkets and Fuel brands, sorted cheapest-first. Brand-name variants are merged (e.g. `BP` / `BP OIL UK` / `BP HARVEST ENERGY` → one **BP**), and each brand row taps to expand its individual branches.
 - **Directions** — one tap opens Google Maps navigation to any forecourt.
@@ -21,6 +24,7 @@ not just the sticker price. It runs on live UK prices from the government
 - **Freshness indicator** — the footer shows how long ago the prices last changed.
 - **Price confidence** — a price the feed hasn't confirmed in over a fortnight is badged with its age, rather than shown as though it were current.
 - **Works with no signal** — opens instantly from cache and keeps the last prices you had, which is the situation you're actually in when deciding where to fill up. Location search still works offline; postcode lookup can't, and says so.
+- **Announces its own updates** — a cached app can linger on an old version silently, so when a newer one exists a pill appears: "App updated — tap to refresh". Checked on load and whenever the app returns to the foreground.
 - **Add to home screen** — installable web-app shortcut with its own icon, via `manifest.json` and `sw.js` on Android and the Apple meta tags on iOS.
 - **Light & dark themes**, automatic.
 - **Privacy-friendly analytics** — Cloudflare Web Analytics (no cookies, no consent banner).
@@ -142,7 +146,13 @@ current location. Distances fall back to straight-line × 1.3 because OSRM is
 unreachable. Postcode search can't work at all, and says so, pointing at the 📍 button.
 
 **`VERSION` in `sw.js` only needs bumping to force old caches out** — if the precache
-list or these strategies change. Ordinary edits to `index.html` propagate by themselves.
+list or these strategies change. Ordinary edits to `index.html` propagate by themselves:
+the shell is served one load behind by design, and when the background refresh finds a
+newer page than the one on screen, the worker tells the page and an **"App updated —
+tap to refresh"** pill appears. Returning to the foreground triggers the same check, so
+even an iOS home-screen app resumed from memory — which never navigates — finds out.
+Before that pill existed, users sat on old versions for hours and re-reported
+already-fixed bugs.
 
 ## Validation (`scripts/validate-prices.mjs`)
 

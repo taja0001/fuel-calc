@@ -7,6 +7,23 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ## 2026-07-30
 
+**Journey mode says what the trip itself will cost.** "This 280 mile trip will burn
+about 33 L of E10 — around £50.56 at the best price on your route" — the question
+behind most journey searches, answered from numbers already in hand. Priced at the
+lowest pence-per-litre among open forecourts en route; the first draft quoted the
+best-value stop instead, which at a full tank is merely the nearest and overstated a
+280-mile trip by £3. (`586effd`)
+
+**Faster first search.** The connections to the postcode and routing services now open
+while you're still typing, instead of after you tap search — saving the 100–300ms of
+connection setup mobile networks charge for talking to a new server. (`fdb59af`)
+
+**The app announces its own updates.** The offline cache serves the page one load
+behind, and an iPhone home-screen app resumes from memory without loading at all — so
+users lingered on old versions indefinitely and re-reported already-fixed bugs (it
+happened within the hour). When a newer version exists, a pill appears: "App updated —
+tap to refresh". Checked on load and every return to the foreground. (`9bfd182`)
+
 **Honest messaging when closed forecourts don't make the list.** In dense areas the
 closed ones all rank below the 15 shown, and the note still promised "greyed out" rows
 nobody could see — reported as a bug at TW15 2AG, where all 10 closed forecourts sat at

@@ -7,6 +7,29 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ## 2026-07-30
 
+**Honest messaging when closed forecourts don't make the list.** In dense areas the
+closed ones all rank below the 15 shown, and the note still promised "greyed out" rows
+nobody could see — reported as a bug at TW15 2AG, where all 10 closed forecourts sat at
+rank 16+. The note now says open ones outranked them, and the brand lists — which show
+every result — mark closed branches greyed with "· closed". (`8852c6b`)
+
+**Set your fuel level like the gauge shows it.** A slider under the level buttons,
+marked like a real dash gauge — 0 to 1 with ticks at every eighth, quarters taller —
+stepping in 2.5% so a needle between two marks is expressible. Live readout of litres
+to fill ("70% full · ~17 L to fill"), synced both ways with the buttons, feeding the
+fill cost and journey range alike. (`120ecaf`, `fbef0ee`)
+
+**Minutes, not just miles.** Every distance now carries drive time — "2.6 mi · 7 min
+away", "0.3 mi · 1 min off route" — from the same routing requests the app already made.
+Minutes are the unit people plan in; when routing is unavailable and distances are
+estimates, minutes are omitted rather than invented. (`43343e8`)
+
+**What did the search save you?** A green line under the headline: "£0.75 cheaper than
+your nearest (Sainsbury's · 1.4 mi · 4 min)" — the comparison against just driving to
+the closest forecourt, which is what people do without the app. Judged among open
+forecourts only, and when your nearest is also the best value it says that instead.
+(`43343e8`)
+
 **A failed refresh can no longer wipe the real prices.** Resuming the home-screen app
 with no signal and an evicted cache could replace all ~7,976 stations with the 8-station
 sample set, then invite a re-search against the fakes. A failed refresh now keeps what it

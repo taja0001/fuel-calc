@@ -108,10 +108,19 @@
   .loc-row .inp{flex:1;}
 
   .segs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
-  .level-fine{display:flex;align-items:center;gap:12px;margin-top:10px;}
-  .level-fine input{flex:1;accent-color:var(--amber);min-width:0;}
-  .level-fine output{font-size:12.5px;color:var(--ink-soft);white-space:nowrap;
-    font-variant-numeric:tabular-nums;min-width:9.5em;text-align:right;}
+  /* Styled after a real dash gauge: 0 and 1 at the ends, ticks at every eighth with
+     the quarters taller. The tick row is inset by half a thumb-width each side so the
+     marks line up with where the thumb actually travels. */
+  .level-fine{margin-top:10px;}
+  .gauge-row{display:flex;align-items:flex-start;gap:10px;}
+  .gauge-row .end{font-size:12px;font-weight:700;color:var(--ink-soft);line-height:20px;}
+  .gauge{flex:1;min-width:0;}
+  .gauge input{width:100%;display:block;accent-color:var(--amber);margin:0;height:20px;}
+  .ticks{display:flex;justify-content:space-between;margin:1px 8px 0;}
+  .ticks span{width:2px;height:5px;background:var(--hair-strong);border-radius:1px;}
+  .ticks span.q{height:9px;background:var(--ink-soft);}
+  .level-fine output{display:block;text-align:center;margin-top:4px;font-size:12.5px;
+    color:var(--ink-soft);font-variant-numeric:tabular-nums;}
   .segs.modetabs{grid-template-columns:1fr 1fr;margin-bottom:14px;}
   .seg{appearance:none;border:1px solid var(--hair-strong);background:var(--panel-2);color:var(--ink);
     border-radius:9px;padding:10px 0;font-size:14px;font-weight:700;cursor:pointer;transition:all .12s;
@@ -274,8 +283,17 @@
         <button class="seg" type="button" data-level="90">Nearly</button>
       </div>
       <div class="level-fine">
-        <input type="range" id="levelSlider" min="0" max="95" step="5" value="25"
-               aria-label="Fuel level, fine adjustment">
+        <div class="gauge-row">
+          <span class="end" aria-hidden="true">0</span>
+          <div class="gauge">
+            <input type="range" id="levelSlider" min="0" max="100" step="2.5" value="25"
+                   aria-label="Fuel level, fine adjustment">
+            <div class="ticks" aria-hidden="true">
+              <span class="q"></span><span></span><span class="q"></span><span></span><span class="q"></span><span></span><span class="q"></span><span></span><span class="q"></span>
+            </div>
+          </div>
+          <span class="end" aria-hidden="true">1</span>
+        </div>
         <output id="levelOut" for="levelSlider"></output>
       </div>
     </div>
@@ -414,22 +432,24 @@
     ]
   };
 
-  // Buttons for the common gauge readings, a slider for in-between — a needle sat
-  // between ½ and ¾ shouldn't have to lie by a whole eighth of a tank. Both drive the
-  // same `level`; the slider tops out at 95 because searching for a fill-up with a
-  // genuinely full tank ranks everything by detour alone and means nothing.
+  // Buttons for the common readings, a slider for in-between. The slider mirrors a
+  // real dash gauge — 0 to 1, stepping in eighths' halves (2.5%) so a needle sat
+  // between two ticks is expressible. parseFloat, not parseInt: 62.5 is a legitimate
+  // reading and truncating it would desync the slider from the maths. 100% is allowed
+  // and simply means "~0 L to fill" — the results then rank by trip cost alone, which
+  // is the honest answer to searching with a full tank.
   function setLevel(v){
     level = v;
     $("levelSlider").value = v;
     document.querySelectorAll(".seg[data-level]").forEach(x =>
       x.setAttribute("aria-pressed", String(parseInt(x.dataset.level, 10) === v)));
     const tank = num($("tank"));
-    $("levelOut").textContent = v + "% full" +
+    $("levelOut").textContent = (v % 1 ? v.toFixed(1) : v) + "% full" +
       (tank > 0 ? ` · ~${(tank * (1 - v/100)).toFixed(0)} L to fill` : "");
   }
   document.querySelectorAll(".seg[data-level]").forEach(b =>
     b.addEventListener("click", () => setLevel(parseInt(b.dataset.level, 10))));
-  $("levelSlider").addEventListener("input", () => setLevel(parseInt($("levelSlider").value, 10)));
+  $("levelSlider").addEventListener("input", () => setLevel(parseFloat($("levelSlider").value)));
   // Tank size feeds the litres-to-fill readout, so keep it live.
   $("tank").addEventListener("input", () => setLevel(level));
   setLevel(25);

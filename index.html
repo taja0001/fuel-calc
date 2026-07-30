@@ -70,6 +70,10 @@
     font-weight:700;line-height:1;color:var(--readout-ink);font-variant-numeric:tabular-nums;
     text-shadow:0 0 18px rgba(255,176,32,.35);margin:8px 0 4px;}
   .readout .where{color:var(--readout-ink);font-size:16px;font-weight:600;}
+  /* The readout background is dark in both themes, so a fixed green is safe here.
+     .sub.save, not .save — the element carries both classes and the plain .sub rule
+     would win the cascade on equal specificity. */
+  .readout .sub.save{color:#5fd992;font-weight:600;}
   .readout .sub{font-family:ui-monospace,Menlo,monospace;color:rgba(245,241,232,.8);font-size:12.5px;
     font-variant-numeric:tabular-nums;margin-top:6px;}
 
@@ -192,6 +196,7 @@
     <div class="total" id="bestTotal">£0.00</div>
     <div class="where" id="bestWhere">Enter your details and search</div>
     <div class="sub" id="bestSub"></div>
+    <div class="sub save" id="bestSave"></div>
   </div>
 
   <div class="card">
@@ -444,10 +449,12 @@
       for (let dx = -rLng; dx <= rLng; dx++) keys.push((cy+dy) + ":" + (cx+dx));
     return keys;
   }
+  // Asking for durations too costs nothing — same request, same response — and minutes
+  // are the unit people actually think in. Each entry comes back {mi, min} or null.
   async function roadDistances(from, list){
     const pts = [from, ...list.map(x => ({lat:x.s.lat, lng:x.s.lng}))]
       .map(p => `${(+p.lng).toFixed(5)},${(+p.lat).toFixed(5)}`).join(";");
-    const url = `https://router.project-osrm.org/table/v1/driving/${pts}?sources=0&annotations=distance`;
+    const url = `https://router.project-osrm.org/table/v1/driving/${pts}?sources=0&annotations=duration,distance`;
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
     try {
@@ -456,7 +463,9 @@
       const d = await r.json();
       const row = d && d.distances && d.distances[0];
       if (!row) return null;
-      return row.slice(1).map(m => (m == null ? null : m / 1609.344));
+      const dur = (d.durations && d.durations[0]) || [];
+      return row.slice(1).map((m, i) => (m == null ? null :
+        {mi: m / 1609.344, min: dur[i + 1] == null ? null : dur[i + 1] / 60}));
     } catch { return null; } finally { clearTimeout(timer); }
   }
   // Journey mode: real road distance from the point on the route nearest each station
@@ -475,7 +484,7 @@
     const src = anchors.map((_, i) => i).join(";");
     const dst = list.map((_, i) => anchors.length + i).join(";");
     const url = `https://router.project-osrm.org/table/v1/driving/${pts}`
-      + `?sources=${src}&destinations=${dst}&annotations=distance`;
+      + `?sources=${src}&destinations=${dst}&annotations=duration,distance`;
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
     try {
@@ -484,9 +493,12 @@
       const d = await r.json();
       const m = d && d.distances;
       if (!m) return null;
+      const dm = d.durations || [];
       return list.map((_, i) => {
         const v = m[aOf[i]] ? m[aOf[i]][i] : null;
-        return v == null ? null : v / 1609.344;
+        if (v == null) return null;
+        const t = dm[aOf[i]] ? dm[aOf[i]][i] : null;
+        return {mi: v / 1609.344, min: t == null ? null : t / 60};
       });
     } catch { return null; } finally { clearTimeout(timer); }
   }
@@ -737,12 +749,14 @@
         const rows = est.map((r, i) => {
           // Number.isFinite, not isFinite — OSRM sends null for an unroutable pair and
           // plain isFinite(null) is true, which would score the detour as free.
-          const oneWay = (roadMi && Number.isFinite(roadMi[i])) ? roadMi[i] : r.off * DETOUR;
+          const rd = roadMi && roadMi[i];
+          const oneWay = (rd && Number.isFinite(rd.mi)) ? rd.mi : r.off * DETOUR;
+          const mins = (rd && Number.isFinite(rd.min)) ? rd.min : null;
           const detour = oneWay * 2;
           const fillCost = litresFill * r.price/100;
           const tripLitres = mpg > 0 ? detour/mpg * LPG : 0;
           const tripCost = tripLitres * r.price/100;
-          return {s:r.s, price:r.price, dist: oneWay, fillCost, tripCost, total: fillCost + tripCost};
+          return {s:r.s, price:r.price, dist: oneWay, mins, fillCost, tripCost, total: fillCost + tripCost};
         }).sort((a,b) => a.total - b.total);
 
         render(rows, {fuel, litresFill, mode:"journey", found: usable.length, notes});
@@ -784,12 +798,14 @@
       const roadMi = est.length ? await roadDistances(userLoc, est) : null;
 
       const rows = est.map((c, i) => {
-        const dist = (roadMi && Number.isFinite(roadMi[i])) ? roadMi[i] : c.sl * DETOUR;
+        const rd = roadMi && roadMi[i];
+        const dist = (rd && Number.isFinite(rd.mi)) ? rd.mi : c.sl * DETOUR;
+        const mins = (rd && Number.isFinite(rd.min)) ? rd.min : null;
         const roundTrip = dist * 2;
         const fillCost = litresFill * c.price/100;
         const tripLitres = mpg > 0 ? roundTrip/mpg * LPG : 0;
         const tripCost = tripLitres * c.price/100;
-        return {s:c.s, price:c.price, dist, fillCost, tripCost, total: fillCost + tripCost};
+        return {s:c.s, price:c.price, dist, mins, fillCost, tripCost, total: fillCost + tripCost};
       }).sort((a,b) => a.total - b.total);
 
       render(rows, {fuel, litresFill, radius, mode:"near", found: cand.length});
@@ -807,6 +823,7 @@
       res.innerHTML = "";
       $("bestTotal").textContent = "£0.00";
       $("bestWhere").textContent = "No results"; $("bestSub").textContent = "";
+      $("bestSave").textContent = "";
       return;
     }
     setMsg(dataNote, dataNote.includes("sample"));
@@ -822,12 +839,33 @@
 
     const best = rows[0];
     const cheapestPump = [...rows].filter(r => !r.shut).sort((a,b)=>a.price-b.price)[0] || rows[0];
+    // "2.9 mi" means little in traffic; minutes are the unit people plan in. Absent
+    // when OSRM was unavailable and distances are estimates.
+    const fmtMin = m => Math.max(1, Math.round(m)) + " min";
+    const distTime = r => r.dist.toFixed(1) + " mi" + (r.mins != null ? " · " + fmtMin(r.mins) : "");
     $("bestTotal").textContent = gbp(best.total);
     $("bestWhere").textContent = label(best.s);
-    const awayWord = ctx.mode === "journey" ? "mi off route" : "mi away";
+    const awayWord = ctx.mode === "journey" ? "off route" : "away";
     const tripWord = ctx.mode === "journey" ? "detour" : "trip";
     $("bestSub").textContent =
-      `${ctx.litresFill.toFixed(1)} L @ ${best.price.toFixed(1)}p · ${best.dist.toFixed(1)} ${awayWord} · fill ${gbp(best.fillCost)} + ${tripWord} ${gbp(best.tripCost)}`;
+      `${ctx.litresFill.toFixed(1)} L @ ${best.price.toFixed(1)}p · ${distTime(best)} ${awayWord} · fill ${gbp(best.fillCost)} + ${tripWord} ${gbp(best.tripCost)}`;
+
+    // The comparison that justifies the app's existence: what did this search save you
+    // against just driving to the nearest forecourt, which is what people do without it?
+    // Nearest is judged among OPEN rows — beating somewhere you couldn't fill up at is
+    // no saving at all.
+    $("bestSave").textContent = "";
+    if (ctx.mode === "near"){
+      const open = rows.filter(r => !r.shut);
+      const nearest = [...open].sort((a,b) => a.dist - b.dist)[0];
+      if (nearest && nearest !== best){
+        const saved = nearest.total - best.total;
+        if (saved >= 0.01) $("bestSave").textContent =
+          `${gbp(saved)} cheaper than your nearest (${canonBrand(nearest.s.brand)} · ${distTime(nearest)})`;
+      } else if (nearest && open.length > 1){
+        $("bestSave").textContent = "Your nearest forecourt is also the best value";
+      }
+    }
 
     res.innerHTML = "";
 
@@ -880,7 +918,7 @@
          </div>`;
       el.querySelector(".brand").textContent = label(r.s);
       el.querySelector(".meta").textContent =
-        `${r.price.toFixed(1)}p/L · ${r.dist.toFixed(1)} mi${ctx.mode==="journey"?" off route":""} · fill ${gbp(r.fillCost)} + ${tripWord} ${gbp(r.tripCost)}`;
+        `${r.price.toFixed(1)}p/L · ${distTime(r)}${ctx.mode==="journey"?" off route":""} · fill ${gbp(r.fillCost)} + ${tripWord} ${gbp(r.tripCost)}`;
       el.querySelector(".dir").href =
         `https://www.google.com/maps/dir/?api=1&destination=${r.s.lat},${r.s.lng}&travelmode=driving`;
       res.appendChild(el);

@@ -108,6 +108,10 @@
   .loc-row .inp{flex:1;}
 
   .segs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+  .level-fine{display:flex;align-items:center;gap:12px;margin-top:10px;}
+  .level-fine input{flex:1;accent-color:var(--amber);min-width:0;}
+  .level-fine output{font-size:12.5px;color:var(--ink-soft);white-space:nowrap;
+    font-variant-numeric:tabular-nums;min-width:9.5em;text-align:right;}
   .segs.modetabs{grid-template-columns:1fr 1fr;margin-bottom:14px;}
   .seg{appearance:none;border:1px solid var(--hair-strong);background:var(--panel-2);color:var(--ink);
     border-radius:9px;padding:10px 0;font-size:14px;font-weight:700;cursor:pointer;transition:all .12s;
@@ -269,6 +273,11 @@
         <button class="seg" type="button" data-level="75">¾</button>
         <button class="seg" type="button" data-level="90">Nearly</button>
       </div>
+      <div class="level-fine">
+        <input type="range" id="levelSlider" min="0" max="95" step="5" value="25"
+               aria-label="Fuel level, fine adjustment">
+        <output id="levelOut" for="levelSlider"></output>
+      </div>
     </div>
   </div>
 
@@ -405,12 +414,25 @@
     ]
   };
 
-  document.querySelectorAll(".seg[data-level]").forEach(b => b.addEventListener("click", () => {
-    level = parseInt(b.dataset.level, 10);
+  // Buttons for the common gauge readings, a slider for in-between — a needle sat
+  // between ½ and ¾ shouldn't have to lie by a whole eighth of a tank. Both drive the
+  // same `level`; the slider tops out at 95 because searching for a fill-up with a
+  // genuinely full tank ranks everything by detour alone and means nothing.
+  function setLevel(v){
+    level = v;
+    $("levelSlider").value = v;
     document.querySelectorAll(".seg[data-level]").forEach(x =>
-      x.setAttribute("aria-pressed", String(x === b)));
-  }));
-  document.querySelector('.seg[data-level="25"]').setAttribute("aria-pressed","true");
+      x.setAttribute("aria-pressed", String(parseInt(x.dataset.level, 10) === v)));
+    const tank = num($("tank"));
+    $("levelOut").textContent = v + "% full" +
+      (tank > 0 ? ` · ~${(tank * (1 - v/100)).toFixed(0)} L to fill` : "");
+  }
+  document.querySelectorAll(".seg[data-level]").forEach(b =>
+    b.addEventListener("click", () => setLevel(parseInt(b.dataset.level, 10))));
+  $("levelSlider").addEventListener("input", () => setLevel(parseInt($("levelSlider").value, 10)));
+  // Tank size feeds the litres-to-fill readout, so keep it live.
+  $("tank").addEventListener("input", () => setLevel(level));
+  setLevel(25);
 
   function num(el){ const v = parseFloat(el.value); return isFinite(v) && v >= 0 ? v : 0; }
   function haversine(a, b){
@@ -1039,6 +1061,7 @@
       if (c.mpg)  $("mpg").value  = c.mpg;
       if (c.tank) $("tank").value = c.tank;
       if (c.fuel) $("fuel").value = c.fuel;
+      setLevel(level);   // the litres-to-fill readout was computed from the default tank
     }
   } catch {}
   ["mpg","tank","fuel"].forEach(id => $(id).addEventListener("change", () => {

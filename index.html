@@ -540,9 +540,19 @@
       dataGeneratedAt = d.generated_at || null;
       dataNote = "";
     } catch {
-      stations = SAMPLE.stations;
-      dataGeneratedAt = "sample";
-      dataNote = "Showing <b>sample prices</b> — live data appears once the Fuel Finder fetcher is set up.";
+      // Only fall back to sample data when there's nothing at all. A *forced* refresh
+      // that fails — resumed with no signal and an evicted cache — must keep the real
+      // stations it already has; replacing 7,976 of them with 8 fakes because the user
+      // glanced at the app in a car park would be strictly worse than doing nothing.
+      if (!stations.length) {
+        stations = SAMPLE.stations;
+        dataGeneratedAt = "sample";
+        dataNote = "Showing <b>sample prices</b> — live data appears once the Fuel Finder fetcher is set up.";
+      } else {
+        // Kept the data we had. The fetch throwing at all means the network is
+        // unreachable, so the footer should say "offline", not blame the feed.
+        servedFromCache = true;
+      }
     }
     buildGrid();
   }
@@ -1021,9 +1031,12 @@
     showFreshness();
     // Results already on screen came from the older data. Swapping them out underneath
     // the user would be worse than telling them, so say so and leave the choice.
-    if (before && dataGeneratedAt !== before && $("results").querySelector(".station")) {
+    // Never for a fall-back to sample data, and never twice — repeated resumes were
+    // stacking one copy of this notice per glance at the phone.
+    if (before && before !== "sample" && dataGeneratedAt !== before && dataGeneratedAt !== "sample"
+        && $("results").querySelector(".station") && !$("results").querySelector(".refetch-note")) {
       const n = document.createElement("div");
-      n.className = "notice warn";
+      n.className = "notice warn refetch-note";
       n.innerHTML = "Prices have changed since this search — <b>search again</b> for current ones.";
       $("results").prepend(n);
     }

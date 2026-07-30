@@ -102,6 +102,40 @@ a day and a number where monetisation is a real conversation.*
 
 ---
 
+## A domain of its own
+
+Decided worth doing **before** the SEO work, so page authority accrues to the permanent
+name from day one. Not bought yet.
+
+Availability checked against the registries via RDAP on **2026-07-30** — point-in-time
+only, so re-check before buying:
+
+| Domain | .co.uk / .uk | .com twin | Notes |
+|---|---|---|---|
+| **fuelmaths** | both free | free | **First choice.** The app in one word — the true-cost sums, the minutes, the savings line are the maths nobody else does. British spelling says UK. Brandable; ~£20/yr secures the pair. |
+| **worththedrive** | .uk only | taken | Best phrase of the lot, but the .co.uk/.com twins belong to others — typed traffic would leak forever. |
+| **cheapestfill** | free | free | Plainly descriptive; `cheapestfill.co.uk/petrol/nottingham` reads perfectly for town pages. Generic as a brand. |
+| **brimthetank** | free | free | Charming idiom, brandable; says nothing about price comparison. |
+| **truecostfuel** | free | free | Accurate but clunky. |
+
+Taken as of the check: `fillup` in every form, `truefuel`, `tankful`, `fillsmart`.
+**Avoid anything containing "fuelfinder"** — it's the government scheme's name, and
+trading under it invites confusion in both directions.
+
+Cost ballpark: £5–10/yr for .co.uk/.uk, £10–15 for .com (Porkbun/Namecheap both handle
+.uk; confirm Cloudflare Registrar's .uk support before assuming it).
+
+### Migration checklist when bought
+
+Repo side (small, verifiable in the browser): `CNAME` file, the licence header and OG
+tags in `index.html` that cite the old URL, README. `manifest.json` and `sw.js` are
+origin-relative and need nothing. Outside the repo: GitHub Pages custom-domain setting
+(cert reissues automatically), new DNS CNAME → `taja0001.github.io` **grey-cloud** (as
+now — proxying blocks the Pages cert), a new Cloudflare Web Analytics site/token, and —
+once Pages is off `fuel.thomasainsworth.co.uk` — orange-cloud that subdomain and add a
+free Cloudflare redirect rule to the new domain, which keeps existing users and every
+previously shared link working.
+
 ## B2B, which ignores traffic
 
 What you'd sell isn't the data — that's free and statutory — it's the work on top:

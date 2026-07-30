@@ -522,8 +522,8 @@
     $("msg").innerHTML = html ? `<div class="notice${warn?' warn':''}">${html}</div>` : "";
   }
 
-  async function loadStations(){
-    if (stations.length) return;
+  async function loadStations(force){
+    if (stations.length && !force) return;
     try {
       // "no-cache" (not no-store) — always check with the server, but let it answer
       // 304 Not Modified so an unchanged file isn't re-downloaded. Prices stay live;
@@ -1002,6 +1002,32 @@
   }));
 
   loadStations().then(showFreshness);
+
+  // "Prices updated 8m ago" used to be written once and never touched again, so on a
+  // page left open — or a home-screen app resumed rather than reloaded, which is what
+  // iOS does — the figure froze at whatever it was when the page last loaded. Two views
+  // at the same moment could disagree, and both could be wrong. Recompute the label on
+  // a timer, and go looking for newer prices when the app comes back to the foreground.
+  setInterval(showFreshness, 60000);
+
+  let lastChecked = Date.now();
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState !== "visible") return;
+    showFreshness();                                    // the label may have drifted
+    if (Date.now() - lastChecked < 5 * 60000) return;   // don't hammer on every glance
+    lastChecked = Date.now();
+    const before = dataGeneratedAt;
+    await loadStations(true);
+    showFreshness();
+    // Results already on screen came from the older data. Swapping them out underneath
+    // the user would be worse than telling them, so say so and leave the choice.
+    if (before && dataGeneratedAt !== before && $("results").querySelector(".station")) {
+      const n = document.createElement("div");
+      n.className = "notice warn";
+      n.innerHTML = "Prices have changed since this search — <b>search again</b> for current ones.";
+      $("results").prepend(n);
+    }
+  });
 
   // Opens instantly and keeps working with no signal — see sw.js for the strategy.
   // Registered after load so it never competes with the first paint or the price fetch.

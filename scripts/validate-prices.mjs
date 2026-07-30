@@ -58,7 +58,8 @@ if (!Number.isFinite(generated)) {
 // --- per-station checks -----------------------------------------------------
 // Collect counts rather than one message per station, so a systemic problem reads as
 // one line instead of 8,000.
-const tally = { noName: 0, badLat: 0, badLng: 0, outsideUK: 0, noPrices: 0, oddPrice: 0, unknownGrade: 0 };
+const tally = { noName: 0, badLat: 0, badLng: 0, outsideUK: 0, noPrices: 0, oddPrice: 0,
+                unknownGrade: 0, badHours: 0 };
 const examples = {};
 const note = (key, detail) => { tally[key]++; if (!examples[key]) examples[key] = detail; };
 let withPrices = 0;
@@ -73,6 +74,17 @@ for (const s of stations) {
   if (Number.isFinite(s.lat) && Number.isFinite(s.lng) &&
       (s.lat < UK.minLat || s.lat > UK.maxLat || s.lng < UK.minLng || s.lng > UK.maxLng)) {
     note("outsideUK", `${where}: ${s.lat},${s.lng}`);
+  }
+
+  // Opening hours: 1 for 24/7, or seven [open, close] pairs in minutes from midnight.
+  // Absent is fine — the app treats unknown hours as open.
+  if (s.o !== undefined) {
+    if (s.o !== 1) {
+      const bad = !Array.isArray(s.o) || s.o.length !== 7 || s.o.some(d =>
+        !Array.isArray(d) || d.length !== 2 ||
+        !d.every(v => Number.isInteger(v) && v >= 0 && v <= 1440));
+      if (bad) note("badHours", `${where}: ${JSON.stringify(s.o).slice(0, 60)}`);
+    }
   }
 
   const prices = s.prices;
@@ -97,6 +109,7 @@ const LABEL = {
   noPrices: "stations with no usable price",
   oddPrice: `prices outside ${PRICE.min}-${PRICE.max}p per litre`,
   unknownGrade: "unrecognised fuel grades",
+  badHours: "malformed opening hours",
 };
 // A handful of bad records is normal in an 8,000-row government feed; a systemic
 // problem is not. Only fail past 1% of the file.
@@ -113,7 +126,13 @@ if (withPrices < MIN_STATIONS) {
 }
 
 // --- report -----------------------------------------------------------------
+const h24 = stations.filter(s => s.o === 1).length;
+const timed = stations.filter(s => Array.isArray(s.o)).length;
 console.log(`${FILE}: ${stations.length} stations, ${withPrices} with a usable price, generated ${doc.generated_at}`);
+console.log(`  opening hours: ${h24} open 24/7, ${timed} with set hours, ` +
+            `${stations.length - h24 - timed} unknown; ` +
+            `${stations.filter(s => s.sm).length} supermarket, ` +
+            `${stations.filter(s => s.mw).length} motorway services`);
 if (problems.length) {
   console.error(`\n${FILE} failed validation:`);
   for (const p of problems) console.error(`  - ${p}`);

@@ -120,6 +120,35 @@ function extractPrices(fuelPrices, dropped) {
 
 const round5 = n => Math.round(n * 1e5) / 1e5;   // ~1 m, finer than any forecourt needs
 
+// Opening hours, compacted. Just under half of all forecourts close at some point, so
+// without this the app happily recommends a shut one at midnight.
+//   1                       -> open 24/7
+//   [[open,close], x7]      -> minutes from midnight, Monday first; a 24-hour day is
+//                              [0,1440], and close < open means it shuts after midnight
+//   omitted                 -> unknown, and the app treats unknown as open
+const DAYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"];
+const toMins = t => {
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(t || ""));
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+};
+function hoursOf(info) {
+  const days = info.opening_times?.usual_days;
+  if (!days) return undefined;
+  const week = [];
+  for (const name of DAYS) {
+    const d = days[name];
+    if (!d) return undefined;
+    if (d.is_24_hours) { week.push([0, 1440]); continue; }
+    const o = toMins(d.open), c = toMins(d.close);
+    if (o === null || c === null) return undefined;
+    // 00:00-00:00 with is_24_hours false is the feed's junk value (4 records
+    // nationwide). It reads as "shut all week", which is never what's meant.
+    if (o === 0 && c === 0) return undefined;
+    week.push([o, c]);
+  }
+  return week.every(([o, c]) => o === 0 && c === 1440) ? 1 : week;
+}
+
 function locOf(info) {
   const l = info.location || info;
   return {
@@ -140,7 +169,7 @@ async function main() {
   const priceMap = new Map();
   for (const p of prices) priceMap.set(p.node_id, p.fuel_prices || []);
 
-  const dropped = { closed: 0, noCoords: 0, offMap: 0, noPrices: 0, prices: 0 };
+  const dropped = { closed: 0, noCoords: 0, offMap: 0, noPrices: 0, prices: 0, noHours: 0 };
   const stations = [];
   for (const s of info) {
     if (s.permanent_closure || s.temporary_closure) { dropped.closed++; continue; }
@@ -155,20 +184,35 @@ async function main() {
     if (!fp || !fp.length) { dropped.noPrices++; continue; }
     const pr = extractPrices(fp, dropped);
     if (!Object.keys(pr).length) { dropped.noPrices++; continue; }
+    // sm/mw are written only when true — cheaper than a 0 on every record. sm comes
+    // from the feed rather than brand-name matching, which missed 30% of supermarket
+    // forecourts because plenty don't trade under a supermarket's name.
+    const hours = hoursOf(s);
+    if (hours === undefined) dropped.noHours++;
     stations.push({
       id: s.node_id,          // for the stable sort only — stripped before writing
       brand: s.brand_name || s.trading_name || "",
       name: s.trading_name || "",
       postcode, lat, lng,
       prices: pr,
+      ...(hours !== undefined ? { o: hours } : {}),
+      ...(s.is_supermarket_service_station ? { sm: 1 } : {}),
+      ...(s.is_motorway_service_station ? { mw: 1 } : {}),
     });
   }
 
+  const h24 = stations.filter(s => s.o === 1).length;
+  const timed = stations.filter(s => Array.isArray(s.o)).length;
   console.log(
     `Kept ${stations.length} stations. Dropped: ${dropped.closed} closed, ` +
     `${dropped.noCoords} without coordinates, ${dropped.offMap} outside the UK, ` +
     `${dropped.noPrices} without a usable price, plus ${dropped.prices} individual ` +
     `prices outside ${PRICE_MIN}-${PRICE_MAX}p.`
+  );
+  console.log(
+    `Opening hours: ${h24} open 24/7, ${timed} with set hours, ${dropped.noHours} unknown. ` +
+    `Flags: ${stations.filter(s => s.sm).length} supermarket, ` +
+    `${stations.filter(s => s.mw).length} motorway services.`
   );
 
   if (!stations.length) {

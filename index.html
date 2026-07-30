@@ -107,6 +107,11 @@
   .st-main .pill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;
     text-transform:uppercase;color:var(--go);background:var(--go-soft);border-radius:20px;
     padding:2px 8px;margin-top:6px;}
+  .st-main .pill.shut{color:var(--warn);background:transparent;border:1px solid var(--warn);}
+  .st-main .pill.mway{color:var(--ink-soft);background:transparent;border:1px solid var(--hair-strong);}
+  /* Closed forecourts stay listed — useful when planning tomorrow — but read as muted
+     and can never hold the top spot. */
+  .station.shut{opacity:.55;}
   .dir{display:inline-block;margin-top:8px;margin-right:10px;font-size:13px;font-weight:600;
     color:var(--amber);text-decoration:none;}
   .dir:hover{text-decoration:underline;}
@@ -275,6 +280,45 @@
     const lx = x.toLowerCase();
     for (const [key, disp] of BRAND_CANON){ if (lx.includes(key)) return disp; }
     return x.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); // title-case unknown brands
+  }
+
+  // --- opening hours ----------------------------------------------------------
+  // s.o is 1 for 24/7, or seven [openMins, closeMins] pairs starting Monday. Absent
+  // means the feed didn't say, and unknown counts as open — better to show a forecourt
+  // that might be shut than to hide one that's actually serving.
+  // Times are UK local, and so is the browser clock for anyone this app is for.
+  const hhmm = m => String(Math.floor(m/60) % 24).padStart(2,"0") + ":" + String(m % 60).padStart(2,"0");
+  function todayHours(s, now){
+    if (!Array.isArray(s.o)) return null;
+    const idx = (now.getDay() + 6) % 7;                  // JS Sunday=0 -> Monday=0
+    return {today: s.o[idx], yesterday: s.o[(idx + 6) % 7]};
+  }
+  // true = open, false = shut, null = no idea
+  function isOpen(s, now){
+    if (s.o === 1) return true;
+    const h = todayHours(s, now);
+    if (!h) return null;
+    const mins = now.getHours()*60 + now.getMinutes();
+    const [o, c] = h.today;
+    if (o === 0 && c === 1440) return true;
+    // A close time before the open time means it runs past midnight, so the small
+    // hours belong to yesterday's session.
+    if (c < o) return mins >= o || mins < c;
+    if (mins >= o && mins < c) return true;
+    const [yo, yc] = h.yesterday;
+    return yc < yo && mins < yc;
+  }
+  function opensAt(s, now){
+    const h = todayHours(s, now);
+    if (!h) return "";
+    const mins = now.getHours()*60 + now.getMinutes();
+    if (mins < h.today[0]) return hhmm(h.today[0]);      // later today
+    for (let d = 1; d <= 7; d++){                         // else the next day it opens
+      const idx = ((now.getDay() + 6) % 7 + d) % 7;
+      const [o, c] = s.o[idx];
+      if (o !== c) return (d === 1 ? "tomorrow " : "") + hhmm(o);
+    }
+    return "";
   }
 
   let level = 25;
@@ -684,8 +728,16 @@
     setMsg(dataNote, dataNote.includes("sample"));
     showFreshness();
 
+    // Tag each row as open/shut, then let a shut forecourt keep its place in the list
+    // but never the top spot — recommending somewhere closed defeats the point. Rows
+    // arrive already sorted by true cost, so this is a stable partition, not a re-rank.
+    const now = new Date();
+    for (const r of rows) r.shut = isOpen(r.s, now) === false;
+    rows.sort((a,b) => (a.shut ? 1 : 0) - (b.shut ? 1 : 0));
+    const shutCount = rows.filter(r => r.shut).length;
+
     const best = rows[0];
-    const cheapestPump = [...rows].sort((a,b)=>a.price-b.price)[0];
+    const cheapestPump = [...rows].filter(r => !r.shut).sort((a,b)=>a.price-b.price)[0] || rows[0];
     $("bestTotal").textContent = gbp(best.total);
     $("bestWhere").textContent = label(best.s);
     const awayWord = ctx.mode === "journey" ? "mi off route" : "mi away";
@@ -695,7 +747,17 @@
 
     res.innerHTML = "";
 
-    for (const note of (staleNote ? [{warn:true, html:staleNote}] : []).concat(ctx.notes || [])){
+    // At 3am in a quiet area everything can be shut, and the usual wording would then
+    // promise an open alternative that isn't there.
+    const openNotes = !shutCount ? [] : shutCount === rows.length
+      ? [{warn:true, html:
+          `Every forecourt here is <b>closed right now</b>. The cheapest is still shown —
+           check when it opens before setting off.`}]
+      : [{html:
+          `${shutCount === 1 ? "One forecourt is" : shutCount + " forecourts are"} <b>closed right now</b> —
+           still listed, greyed out, and never ranked best value.`}];
+
+    for (const note of (staleNote ? [{warn:true, html:staleNote}] : []).concat(openNotes, ctx.notes || [])){
       const n = document.createElement("div");
       n.className = "notice" + (note.warn ? " warn" : "");
       n.innerHTML = note.html;
@@ -712,15 +774,18 @@
     const shown = rows.slice(0, 15);
     shown.forEach((r, i) => {
       const el = document.createElement("div");
-      el.className = "station" + (i === 0 ? " best" : "");
+      el.className = "station" + (i === 0 ? " best" : "") + (r.shut ? " shut" : "");
       const delta = r.total - best.total;
+      const opens = r.shut ? opensAt(r.s, now) : "";
       el.innerHTML =
         `<div class="rank">${i+1}</div>
          <div class="st-main">
            <div class="brand"></div>
            <div class="meta"></div>
            <a class="dir" target="_blank" rel="noopener noreferrer">🧭 Directions</a>
-           ${i===0 ? '<span class="pill">Best value</span>' : ''}
+           ${i===0 && !r.shut ? '<span class="pill">Best value</span>' : ''}
+           ${r.shut ? `<span class="pill shut">Closed${opens ? " · opens " + opens : ""}</span>` : ''}
+           ${r.s.mw ? '<span class="pill mway">Motorway services</span>' : ''}
          </div>
          <div class="st-cost">
            <div class="total">${gbp(r.total)}</div>
@@ -744,17 +809,28 @@
     }
 
     // cheapest by TRUE COST per brand, split into two lists: supermarkets vs fuel brands
+    // The feed flags supermarket forecourts itself (s.sm). Matching brand names missed
+    // 30% of them, because plenty don't trade under a supermarket's name. The name list
+    // stays only as a fallback for data written before the flag existed.
     const SUPERMARKETS = ["tesco","asda","sainsbury","morrison","costco","booths","waitrose"];
-    const isSupermarket = b => { const x = (b||"").toLowerCase(); return SUPERMARKETS.some(k => x.includes(k)); };
+    const byName = b => { const x = (b||"").toLowerCase(); return SUPERMARKETS.some(k => x.includes(k)); };
+    const hasFlags = rows.some(r => r.s.sm);
+    const isSuperRow = r => hasFlags ? !!r.s.sm : byName(r.s.brand);
 
     const brandMap = new Map();
     for (const r of rows){
       const b = canonBrand(r.s.brand);
       let e = brandMap.get(b);
-      if (!e){ e = {brand:b, rows:[], best:r}; brandMap.set(b, e); }
+      if (!e){ e = {brand:b, rows:[], best:r, sup:0}; brandMap.set(b, e); }
       e.rows.push(r);
-      if (r.total < e.best.total) e.best = r;
+      if (isSuperRow(r)) e.sup++;
+      // Prefer an open branch for the headline price, same rule as the main list.
+      if ((r.shut ? 1 : 0) - (e.best.shut ? 1 : 0) < 0 ||
+          (r.shut === e.best.shut && r.total < e.best.total)) e.best = r;
     }
+    // Decide by majority — one flagged forecourt shouldn't drag a whole oil brand into
+    // the Supermarkets list.
+    for (const e of brandMap.values()) e.isSuper = e.sup * 2 > e.rows.length;
     const brands = [...brandMap.values()].sort((a,b) => a.best.total - b.best.total);
 
     function brandSection(title, list){
@@ -768,6 +844,8 @@
         const row = document.createElement("div");
         row.className = "brand-row" + (i === 0 ? " best" : "");
         row.setAttribute("role", "button");
+        row.setAttribute("tabindex", "0");
+        row.setAttribute("aria-expanded", "false");
         row.innerHTML =
           `<div class="bn"></div>
            <div class="bp"><span class="p">${gbp(e.best.total)}</span>
@@ -795,10 +873,19 @@
           sub.appendChild(ss);
         });
 
-        row.addEventListener("click", ev => {
-          if (ev.target.closest("a")) return;
+        const toggle = () => {
           sub.hidden = !sub.hidden;
           row.classList.toggle("open", !sub.hidden);
+          row.setAttribute("aria-expanded", String(!sub.hidden));
+        };
+        row.addEventListener("click", ev => {
+          if (ev.target.closest("a")) return;
+          toggle();
+        });
+        // role="button" without these was a lie: keyboard and screen-reader users were
+        // told it was a button, then couldn't operate it.
+        row.addEventListener("keydown", ev => {
+          if (ev.key === "Enter" || ev.key === " "){ ev.preventDefault(); toggle(); }
         });
 
         res.appendChild(row);
@@ -806,8 +893,8 @@
       });
     }
 
-    brandSection("Supermarkets", brands.filter(e => isSupermarket(e.brand)));
-    brandSection("Fuel brands", brands.filter(e => !isSupermarket(e.brand)));
+    brandSection("Supermarkets", brands.filter(e => e.isSuper));
+    brandSection("Fuel brands", brands.filter(e => !e.isSuper));
 
     const how = document.createElement("details");
     how.className = "how";

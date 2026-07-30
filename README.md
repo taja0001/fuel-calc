@@ -13,6 +13,7 @@ not just the sticker price. It runs on live UK prices from the government
 - **Two modes:**
   - **Near me** — cheapest fill-ups within a radius of a postcode or your current location.
   - **Plan a journey** — enter a start and destination and it finds the cheapest fill-up **on the way**, ranked by pump price plus the small detour off your route.
+- **Open now** — just under half of UK forecourts close at some point, so a closed one is greyed out, marked with when it opens, and can never be ranked best value. Motorway services are labelled too.
 - **Cheapest by brand** — two lists, Supermarkets and Fuel brands, sorted cheapest-first. Brand-name variants are merged (e.g. `BP` / `BP OIL UK` / `BP HARVEST ENERGY` → one **BP**), and each brand row taps to expand its individual branches.
 - **Directions** — one tap opens Google Maps navigation to any forecourt.
 - **Location** — postcode (via postcodes.io) or current location.
@@ -73,6 +74,17 @@ Only the app's own fields are written out: brand, name, postcode, lat/lng to 5 d
 places, and prices for the grades a station actually sells. The `node_id` is used
 internally for a stable sort but never published — it and the street address were
 about 40% of the file and the app reads neither.
+
+Three more fields ride along, all short because they're on every record:
+
+| Field | Meaning |
+|---|---|
+| `o` | Opening hours. `1` = 24/7; otherwise seven `[open, close]` pairs in minutes from midnight, Monday first. A 24-hour day is `[0, 1440]`, and `close < open` means it shuts after midnight. **Absent means the feed didn't say, and the app treats unknown as open** — better to show a forecourt that might be shut than hide one that's serving. |
+| `sm` | Present (`1`) if the feed flags it a supermarket forecourt. Omitted otherwise. |
+| `mw` | Present (`1`) if it's motorway services. Omitted otherwise. |
+
+Roughly half of all forecourts close at some point, so without `o` the app would
+cheerfully recommend a shut one at midnight.
 
 ### Bad records
 
@@ -187,8 +199,13 @@ its own HTTPS certificate. (Proxying through Cloudflare blocks the cert.)
 
 ## Maintenance notes
 
-- A brand not merging, or a supermarket showing under "Fuel brands"? Edit the
-  `BRAND_CANON` and/or `SUPERMARKETS` lists near the top of the script in `index.html`.
+- A brand not merging? Edit the `BRAND_CANON` list near the top of the script in
+  `index.html`.
+- A supermarket showing under "Fuel brands" is no longer a manual fix: the split now
+  uses the feed's own `is_supermarket_service_station` flag. The old `SUPERMARKETS`
+  name list survives only as a fallback for data written before the flag was captured,
+  and it missed 30% of supermarket forecourts because plenty don't trade under a
+  supermarket's name.
 - Rotating the API secret? Update `~/fuel/secrets.env` on the Pi. Nothing in the repo
   changes.
 - Analytics: the Cloudflare beacon `<script>` is in the `<head>` of `index.html`;

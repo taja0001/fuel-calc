@@ -24,10 +24,39 @@ official for petrol, ~18% for diesel**
 ([first Commission report, COM(2024) 122](https://climate.ec.europa.eu/document/download/b644dafe-1385-4b56-98d9-21e7e9f3601b_en?filename=report.pdf),
 [2022-data update](https://climate.ec.europa.eu/news-other-reads/news/publication-real-world-co2-emissions-and-fuel-consumption-cars-and-vans-collected-2022-2024-07-26_en)).
 
-So: **petrol × 0.82, diesel × 0.85**, presented as "roughly" and editable. Two caveats
-from the same reports: the gap widens 1.5–2.5× for heavy SUVs (our flat factor will
-flatter those), and plug-in hybrids are off by ~3.5× — which is why the hybrid guard
-below refuses rather than estimates.
+So: **petrol × 0.82, diesel × 0.85** for WLTP-era cars, presented as "roughly" and
+editable. Two caveats from the same reports: the gap widens 1.5–2.5× for heavy SUVs
+(a flat factor flatters those), and plug-in hybrids are off by ~3.5× — which is why
+the hybrid guard below refuses rather than estimates.
+
+## The accuracy ladder
+
+Each rung is independent and cheap-to-cheapish; build in this order.
+
+**Rung 1 — era-aware factor (the big one, zero extra input).** Official CO₂ on the V5
+was measured under NEDC before ~2018 and WLTP after ~2020, and the real-world gap
+differs hugely: **39% under NEDC** ([ICCT, 1.3M vehicles](https://theicct.org/real-world-vehicle-fuel-consumption-gap-in-europe-is-stabilizing/))
+vs ~18–24% under WLTP (OBFCM, above). VES returns year of manufacture, so:
+`year ≤ 2017 → ×0.72 · 2018–2020 → ×0.77 (transition, fuzzy) · ≥ 2021 → ×0.82/0.85`.
+Without this, the average-age UK car (~9 years) gets flattered by ~15% — a systematic
+error, not noise. **This rung is not optional.**
+
+**Rung 2 — CO₂-dependent taper.** OBFCM shows the gap growing with vehicle size; a
+small penalty above ~130 g/km (calibrate against the report's model-level annex when
+building) stops SUVs looking more economical than they are.
+
+**Rung 3 — personal calibration, the ceiling.** No model beats measuring: a "log this
+fill-up" affordance (odometer + litres, two fields, localStorage like the car — never
+uploaded) yields the user's true mpg after two fills. The estimate becomes the *seed*;
+the measured figure quietly takes over. Also sharpens every trip-cost figure, and suits
+the app's brand: honest numbers, privately kept.
+
+**Rung 4 — full hybrids.** Refuse only plug-ins (their official figures are fantasy);
+ordinary hybrids (the enormous Toyota fleet) can take a factor with a wider "roughly"
+band once VES's hybrid `fuelType` strings are known.
+
+Expected error: flat factor alone ±20% on older cars → rung 1 brings typical error to
+±8–10% → rung 3 converges on ±3%, which is the seasonal noise floor of mpg itself.
 
 Edge cases: hybrids report implausibly low CO₂ (plug-in WLTP figures are fantasy —
 detect `fuelType` containing HYBRID and either refuse or use a milder divisor);

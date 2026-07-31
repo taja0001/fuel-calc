@@ -104,7 +104,17 @@ the better deal if it were open". But it reads oddly at a glance.
 Options: leave it, hide the delta on closed rows, or grey it. **My inclination is to
 leave it** — the Closed badge already explains the ordering. Thomas hasn't ruled.
 
-## 5. Amend the price-history plan
+## 5. Search counter — see [search-counter.md](search-counter.md)
+
+Cloudflare's beacon counts visitors but not actions; a ~25-line Worker plus a
+three-word `sendBeacon` ping counts searches (mode, ok/err — never the postcode,
+enforced by a CI test). Gives the searches-per-visitor ratio the monetisation
+question turns on, and doubles as the rehearsal for the plate-lookup Worker.
+Claude's half is ready to build; needs Thomas for two dashboard steps (~10 min).
+
+*Small-moderate. The most useful next piece of infrastructure.*
+
+## 6. Amend the price-history plan
 
 [price-history-plan.md](price-history-plan.md) is **partly obsolete** and actively
 misleading. It assumed change times had to be inferred by diffing hourly snapshots,

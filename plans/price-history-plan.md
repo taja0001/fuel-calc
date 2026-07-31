@@ -5,7 +5,7 @@
 > hour-of-day analysis impossible, and sets a September revisit date. Commit `0d844e0`
 > then captured `pu` (`price_last_updated`), which gives the exact minute each price
 > moved straight from the feed. Gaps no longer matter, hour-of-day is answerable now,
-> and the timeline is earlier than stated below. Rewriting this is item 5 in
+> and the timeline is earlier than stated below. Rewriting this is item 6 in
 > [backlog.md](backlog.md). Everything about **what to publish** and **where to compute
 > it** still holds.
 

@@ -16,9 +16,18 @@ petrol:  mpg ≈ 2310 g/L × 2.82481 (km/L → mpg UK) ÷ CO₂ g/km  ≈ 6525 �
 diesel:  mpg ≈ 2680 g/L × 2.82481                  ÷ CO₂ g/km  ≈ 7571 ÷ CO₂
 ```
 
-Official figures flatter reality by ~10–20% (test cycle vs traffic), so the app should
-apply **× 0.85** and present it as "roughly", editable. Examples: petrol 120 g/km →
-54 official → **~46 suggested**; diesel 110 g/km → 69 official → **~59 suggested**.
+The CO₂→official-mpg step is exact by construction — both numbers encode the same test
+result. Only the official→real-world factor is empirical, and it doesn't need guessing:
+the EU's **OBFCM programme** reads actual fuel-burn meters (mandatory on all new cars
+since 2021, 600k+ vehicles in the first report) and publishes the gap — **~20–24% over
+official for petrol, ~18% for diesel**
+([first Commission report, COM(2024) 122](https://climate.ec.europa.eu/document/download/b644dafe-1385-4b56-98d9-21e7e9f3601b_en?filename=report.pdf),
+[2022-data update](https://climate.ec.europa.eu/news-other-reads/news/publication-real-world-co2-emissions-and-fuel-consumption-cars-and-vans-collected-2022-2024-07-26_en)).
+
+So: **petrol × 0.82, diesel × 0.85**, presented as "roughly" and editable. Two caveats
+from the same reports: the gap widens 1.5–2.5× for heavy SUVs (our flat factor will
+flatter those), and plug-in hybrids are off by ~3.5× — which is why the hybrid guard
+below refuses rather than estimates.
 
 Edge cases: hybrids report implausibly low CO₂ (plug-in WLTP figures are fantasy —
 detect `fuelType` containing HYBRID and either refuse or use a milder divisor);
@@ -70,7 +79,11 @@ First spot-check: see below.
 |---|---|---|---|---|---|
 | 2019 Mazda, 2.0 petrol | Petrol | 150 g/km | **37.0** | **37.5–38** | Within 1.5% — formula validated for a plain petrol. Checked 2026-07-31 via the public GOV.UK vehicle enquiry page. |
 
-One car doesn't prove the constant, but it strongly suggests the ×0.85 real-world
-factor is about right for petrol. Before building: spot-check **a diesel** (different
-carbon constant, 7571) and **a hybrid** (expected to fail — that's what the guard is
-for). If the diesel lands within ~5% too, the formula ships as-is.
+With the OBFCM petrol factor (×0.82) the same car predicts 35.7 — within 5%, still
+comfortably "roughly". The chemistry step needs no further validation, and **the diesel
+question is closed without a diesel owner**: the ×0.85 diesel factor *is* the
+fleet-measured number from 600k+ real cars (see the derivation section).
+
+The one remaining pre-build check is behavioural, not numerical: confirm the exact
+`fuelType` strings VES returns for hybrids (HYBRID ELECTRIC, PETROL/ELECTRIC, …) so the
+guard matches them all — answerable once the API key exists.

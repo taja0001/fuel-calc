@@ -235,7 +235,7 @@
       <div class="field">
         <label for="postcode">Postcode</label>
         <div class="loc-row">
-          <div class="inp"><input id="postcode" type="text" inputmode="text" autocomplete="postal-code" placeholder="e.g. NG1 5FS"></div>
+          <div class="inp"><input id="postcode" type="text" inputmode="text" autocomplete="postal-code" placeholder="e.g. NG1 5FS or Nottingham"></div>
           <button class="btn ghost" id="useGps" type="button" title="Use my location">📍</button>
         </div>
       </div>
@@ -249,13 +249,13 @@
       <div class="field">
         <label for="startPc">Start</label>
         <div class="loc-row">
-          <div class="inp"><input id="startPc" type="text" inputmode="text" autocomplete="postal-code" placeholder="start postcode"></div>
+          <div class="inp"><input id="startPc" type="text" inputmode="text" autocomplete="postal-code" placeholder="start postcode or town"></div>
           <button class="btn ghost" id="useGpsStart" type="button" title="Use my location">📍</button>
         </div>
       </div>
       <div class="field">
         <label for="destPc">Destination</label>
-        <div class="inp"><input id="destPc" type="text" inputmode="text" autocomplete="postal-code" placeholder="destination postcode"></div>
+        <div class="inp"><input id="destPc" type="text" inputmode="text" autocomplete="postal-code" placeholder="destination postcode or town"></div>
       </div>
       <div class="field">
         <label for="offRoute">Max detour off route</label>
@@ -654,18 +654,35 @@
        Treat them as a guide and check the price at the pump.`;
   }
 
-  async function geocodePostcode(pc){
+  // Takes a full postcode, a half postcode (NG1), or a place name (Nottingham) — all
+  // via postcodes.io, which we already use and preconnect to. Place lookups return
+  // `approx`, and the app SAYS what it matched: OS Open Names only knows populated
+  // places, so "Devon" matches a Scottish village called Crook of Devon — a silent
+  // wrong guess would send someone 300 miles the wrong way.
+  async function geocode(q){
+    q = q.trim();
+    const kind = /^[A-Za-z]{1,2}\d[A-Za-z\d]?\s*\d[A-Za-z]{2}$/.test(q) ? "postcode"
+               : /^[A-Za-z]{1,2}\d[A-Za-z\d]?$/.test(q) ? "outcode" : "place";
     let r;
     try {
-      r = await fetch("https://api.postcodes.io/postcodes/" + encodeURIComponent(pc.trim()));
+      r = await fetch(kind === "place"
+        ? "https://api.postcodes.io/places?limit=1&q=" + encodeURIComponent(q)
+        : `https://api.postcodes.io/${kind === "outcode" ? "outcodes" : "postcodes"}/` + encodeURIComponent(q));
     } catch {
       // Offline, the prices are cached but postcodes.io isn't reachable. Without this
       // the user just saw the browser's raw "Failed to fetch".
-      throw new Error("Can't look up a postcode while offline — tap 📍 to use your location instead.");
+      throw new Error("Can't look up a postcode or place while offline — tap 📍 to use your location instead.");
     }
-    if (!r.ok) throw new Error("Postcode not found — check it and try again.");
+    if (!r.ok) throw new Error("Couldn't find that postcode or place — check it and try again.");
     const d = await r.json();
-    return {lat:d.result.latitude, lng:d.result.longitude, label:d.result.postcode};
+    if (kind === "place"){
+      const p = (d.result || [])[0];
+      if (!p) throw new Error("Couldn't find that place — try a town name or a postcode.");
+      const where = p.name_1 + (p.county_unitary || p.region ? ", " + (p.county_unitary || p.region) : "");
+      return {lat: p.latitude, lng: p.longitude, label: p.name_1, approx: where};
+    }
+    return {lat: d.result.latitude, lng: d.result.longitude, label: d.result.postcode || q.toUpperCase(),
+            ...(kind === "outcode" ? {approx: q.toUpperCase() + " (district centre)"} : {})};
   }
 
   $("useGps").addEventListener("click", () => {
@@ -714,11 +731,11 @@
 
       if (mode === "journey") {
         const startPc = $("startPc").value.trim();
-        const start = startPc ? await geocodePostcode(startPc) : startLoc;
+        const start = startPc ? await geocode(startPc) : startLoc;
         if (!start){ setMsg("Enter a start postcode or tap 📍.", true); return; }
         const destPc = $("destPc").value.trim();
         if (!destPc){ setMsg("Enter a destination postcode.", true); return; }
-        const dest = await geocodePostcode(destPc);
+        const dest = await geocode(destPc);
         const offMax = num($("offRoute")) || 1;
 
         const route = await routeSamples(start, dest);
@@ -839,9 +856,17 @@
 
       // --- near me ---
       const pc = $("postcode").value.trim();
-      if (pc) userLoc = await geocodePostcode(pc);
+      if (pc) userLoc = await geocode(pc);
       if (!userLoc){ setMsg("Enter a postcode or tap 📍 to use your location.", true); return; }
       const radius = num($("radius")) || 8;
+
+      // A place or half-postcode search is a guess about where you meant — say which.
+      // The name is external data headed for innerHTML, so it gets escaped.
+      const nearNotes = [];
+      if (userLoc.approx && pc){
+        const esc = String(userLoc.approx).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+        nearNotes.push({html: `Showing prices near <b>${esc}</b> — not where you meant? Try a postcode.`});
+      }
 
       // Only open the grid cells that fall within the radius, rather than measuring
       // every forecourt in the country.
@@ -882,7 +907,7 @@
         return {s:c.s, price:c.price, dist, mins, fillCost, tripCost, total: fillCost + tripCost};
       }).sort((a,b) => a.total - b.total);
 
-      render(rows, {fuel, litresFill, radius, mode:"near", found: cand.length});
+      render(rows, {fuel, litresFill, radius, mode:"near", found: cand.length, notes: nearNotes});
     } catch(e){
       setMsg(e.message || "Something went wrong — try again.", true);
     } finally {

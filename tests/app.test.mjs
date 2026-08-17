@@ -113,7 +113,11 @@ before(async () => {
   // "ZZ9 ..." geocodes to 20 mi north; anything else to the origin — enough to plan
   // a journey between two distinct places.
   await context.route("**/api.postcodes.io/**", r => {
-    const p = r.request().url().includes("ZZ9") ? DEST : ORIGIN;
+    const url = r.request().url();
+    if (url.includes("/places")) return r.fulfill({ contentType: "application/json",
+      body: JSON.stringify({ result: [{ latitude: ORIGIN.lat, longitude: ORIGIN.lng,
+        name_1: "Testville", county_unitary: "Testshire" }] }) });
+    const p = url.includes("ZZ9") ? DEST : ORIGIN;
     return r.fulfill({ contentType: "application/json",
       body: JSON.stringify({ result: { latitude: p.lat, longitude: p.lng, postcode: "X" } }) });
   });
@@ -229,6 +233,22 @@ test("journey mode: the headline panel says what the whole trip costs", async ()
   assert.match(line, /This journey will cost you about £/);
   assert.match(line, new RegExp(`20 mi · ${litres.toFixed(0)} L`));
   assert.ok(Math.abs(parseFloat(line.match(/£([\d.]+)/)[1]) - cost) < 0.03, `${line} ≈ £${cost.toFixed(2)}`);
+});
+
+test("a town name geocodes, and the app says what it matched", async () => {
+  await page.locator('.mode-btn[data-mode="near"]').click();
+  await page.evaluate(() => { document.getElementById("postcode").value = "Testville"; });
+  await page.locator("#search").click();
+  // wait on the note itself — the previous test's rows are still on screen, so a
+  // rows-exist wait passes before this search has even geocoded
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll("#results .notice")].some(n =>
+      n.textContent.includes("Showing prices near")), null, { timeout: 15000 });
+  const note = await page.evaluate(() =>
+    [...document.querySelectorAll("#results .notice")].map(n => n.textContent).join(" "));
+  assert.match(note, /Showing prices near Testville, Testshire/,
+    "a fuzzy match must be announced, not silently trusted");
+  assert.ok(await page.evaluate(() => document.querySelectorAll("#results .station").length) > 0);
 });
 
 test("a failed refresh keeps the real stations instead of swapping in sample data", async () => {

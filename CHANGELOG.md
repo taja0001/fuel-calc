@@ -7,6 +7,13 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ## 2026-08-17
 
+**Search by town name or half postcode.** "Nottingham" or "NG1" now works anywhere a
+postcode did — near-me and both journey fields — via postcodes.io's places endpoint
+(OS Open Names, same licence, same already-preconnected host). Because that dataset
+only knows populated places ("Devon" matches a Scottish village called Crook of
+Devon), the app announces what it matched — "Showing prices near Testville,
+Testshire — not where you meant? Try a postcode" — rather than silently guessing.
+
 **The trip cost moved into the headline panel.** Journey mode has said what the whole
 trip costs since 2026-07-31 — but as one of up to five identical stacked notices, it
 went unseen (it was requested again a fortnight after it shipped, which is its own

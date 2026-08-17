@@ -19,7 +19,7 @@ not just the sticker price. It runs on live UK prices from the government
 - **Open now** — just under half of UK forecourts close at some point, so a closed one is greyed out, marked with when it opens, and can never be ranked best value. Motorway services are labelled too.
 - **Cheapest by brand** — two lists, Supermarkets and Fuel brands, sorted cheapest-first. Brand-name variants are merged (e.g. `BP` / `BP OIL UK` / `BP HARVEST ENERGY` → one **BP**), and each brand row taps to expand its individual branches.
 - **Directions** — one tap opens Google Maps navigation to any forecourt.
-- **Location** — postcode (via postcodes.io) or current location.
+- **Location** — postcode, half postcode (NG1), town name (Nottingham), or current location — all via postcodes.io. A fuzzy match is announced ("Showing prices near …") rather than silently trusted.
 - **Private saved car** — mpg / tank / fuel type are saved in your browser only (localStorage). Never uploaded, never in the repo, invisible to anyone else.
 - **Freshness indicator** — the footer shows how long ago the prices last changed.
 - **Price confidence** — a price the feed hasn't confirmed in over a fortnight is badged with its age, rather than shown as though it were current.

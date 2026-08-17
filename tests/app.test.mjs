@@ -60,13 +60,28 @@ function haversineMi(a, b) {
   return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
 }
 function osrmTable(url) {
-  const coords = new URL(url).pathname.split("/").pop().split(";")
+  const u = new URL(url);
+  const coords = u.pathname.split("/").pop().split(";")
     .map(p => { const [lng, lat] = p.split(",").map(Number); return { lat, lng }; });
-  const from = coords[0], dests = coords.slice(1);
-  const distances = [[0, ...dests.map(d => haversineMi(from, d) * ROAD * 1609.344)]];
-  const durations = [[0, ...dests.map(d => haversineMi(from, d) * ROAD * MIN_PER_MI * 60)]];
+  // near-me uses sources=0 over all coords; journey names sources AND destinations
+  const idx = s => (u.searchParams.get(s) || "").split(";").filter(x => x !== "").map(Number);
+  const srcs = idx("sources").length ? idx("sources") : [0];
+  const dsts = idx("destinations").length ? idx("destinations") : coords.map((_, i) => i);
+  const distances = srcs.map(s => dsts.map(d => haversineMi(coords[s], coords[d]) * ROAD * 1609.344));
+  const durations = srcs.map(s => dsts.map(d => haversineMi(coords[s], coords[d]) * ROAD * MIN_PER_MI * 60));
   return JSON.stringify({ code: "Ok", distances, durations });
 }
+// journey route: a straight line, enough points for the app to resample
+function osrmRoute(url) {
+  const [a, b] = new URL(url).pathname.split("/").pop().split(";")
+    .map(p => { const [lng, lat] = p.split(",").map(Number); return { lat, lng }; });
+  const n = 40, coordinates = [];
+  for (let i = 0; i <= n; i++)
+    coordinates.push([a.lng + (b.lng - a.lng) * i / n, a.lat + (b.lat - a.lat) * i / n]);
+  return JSON.stringify({ code: "Ok", routes: [{ distance: haversineMi(a, b) * 1609.344,
+    geometry: { type: "LineString", coordinates } }] });
+}
+const DEST = { lat: ORIGIN.lat + 20 / 69, lng: ORIGIN.lng };   // 20 mi due north
 
 // ---------------------------------------------------------------------------------
 let server, base, browser, page;
@@ -95,12 +110,17 @@ before(async () => {
     permissions: ["geolocation"],
   });
   await context.route("**/sw.js", r => r.abort());          // see header comment
-  await context.route("**/api.postcodes.io/**", r => r.fulfill({
-    contentType: "application/json",
-    body: JSON.stringify({ result: { latitude: ORIGIN.lat, longitude: ORIGIN.lng, postcode: "NG1 1AA" } }),
-  }));
+  // "ZZ9 ..." geocodes to 20 mi north; anything else to the origin — enough to plan
+  // a journey between two distinct places.
+  await context.route("**/api.postcodes.io/**", r => {
+    const p = r.request().url().includes("ZZ9") ? DEST : ORIGIN;
+    return r.fulfill({ contentType: "application/json",
+      body: JSON.stringify({ result: { latitude: p.lat, longitude: p.lng, postcode: "X" } }) });
+  });
   await context.route("**/router.project-osrm.org/table/**", r =>
     r.fulfill({ contentType: "application/json", body: osrmTable(r.request().url()) }));
+  await context.route("**/router.project-osrm.org/route/**", r =>
+    r.fulfill({ contentType: "application/json", body: osrmRoute(r.request().url()) }));
 
   page = await context.newPage();
   await page.clock.setFixedTime(FIXED);
@@ -190,6 +210,25 @@ test("slider eighths reach the maths: 62.5% means 18.8 L to fill", async () => {
     document.getElementById("bestSub").textContent.startsWith("18.8 L"), null, { timeout: 15000 });
   assert.match(await page.evaluate(() => document.getElementById("levelOut").textContent),
     /62\.5% full/);
+});
+
+test("journey mode: the headline panel says what the whole trip costs", async () => {
+  await page.locator('.mode-btn[data-mode="journey"]').click();
+  await page.evaluate(() => {
+    document.getElementById("startPc").value = "NG1 1AA";
+    document.getElementById("destPc").value = "ZZ9 9ZZ";
+  });
+  await page.locator("#search").click();
+  await page.waitForFunction(() =>
+    document.getElementById("bestSave").textContent.startsWith("Whole trip"), null, { timeout: 15000 });
+  const line = await page.evaluate(() => document.getElementById("bestSave").textContent);
+  // 20 mi at the default 45 mpg = 2.02 L; best OPEN price en route is 140.0p
+  // (the 139.0p forecourt is closed at the pinned 23:15 and must not set the quote)
+  const litres = 20 / 45 * 4.54609;
+  const cost = litres * 1.40;
+  assert.match(line, /Whole trip: 20 mi/);
+  assert.match(line, new RegExp(`≈ ${litres.toFixed(0)} L`));
+  assert.ok(Math.abs(parseFloat(line.match(/£([\d.]+)/)[1]) - cost) < 0.03, `${line} ≈ £${cost.toFixed(2)}`);
 });
 
 test("a failed refresh keeps the real stations instead of swapping in sample data", async () => {

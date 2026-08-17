@@ -5,6 +5,18 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ---
 
+## 2026-08-17
+
+**The trip cost moved into the headline panel.** Journey mode has said what the whole
+trip costs since 2026-07-31 — but as one of up to five identical stacked notices, it
+went unseen (it was requested again a fortnight after it shipped, which is its own
+review). It now sits in the headline panel, in the slot near-me uses for savings:
+"Whole trip: 280 mi ≈ 33 L ≈ £50.56 at the best price en route". This also gave
+journey mode its first automated test, including that a closed forecourt's cheaper
+price never sets the quote.
+
+---
+
 ## 2026-07-31
 
 **Tests, at last.** Twenty of them, run by GitHub Actions on every push: unit tests for

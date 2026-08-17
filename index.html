@@ -933,8 +933,8 @@
     // the whole trip cost, not just the stop.
     if (ctx.mode === "journey" && ctx.trip){
       $("bestSave").textContent =
-        `Whole trip: ${ctx.trip.miles.toFixed(0)} mi ≈ ${ctx.trip.litres.toFixed(0)} L ≈ ` +
-        `${gbp(ctx.trip.cost)} at the best price en route`;
+        `This journey will cost you about ${gbp(ctx.trip.cost)} in fuel ` +
+        `(${ctx.trip.miles.toFixed(0)} mi · ${ctx.trip.litres.toFixed(0)} L)`;
     }
     if (ctx.mode === "near"){
       const open = rows.filter(r => !r.shut);

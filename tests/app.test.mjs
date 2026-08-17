@@ -220,14 +220,14 @@ test("journey mode: the headline panel says what the whole trip costs", async ()
   });
   await page.locator("#search").click();
   await page.waitForFunction(() =>
-    document.getElementById("bestSave").textContent.startsWith("Whole trip"), null, { timeout: 15000 });
+    document.getElementById("bestSave").textContent.startsWith("This journey"), null, { timeout: 15000 });
   const line = await page.evaluate(() => document.getElementById("bestSave").textContent);
   // 20 mi at the default 45 mpg = 2.02 L; best OPEN price en route is 140.0p
   // (the 139.0p forecourt is closed at the pinned 23:15 and must not set the quote)
   const litres = 20 / 45 * 4.54609;
   const cost = litres * 1.40;
-  assert.match(line, /Whole trip: 20 mi/);
-  assert.match(line, new RegExp(`≈ ${litres.toFixed(0)} L`));
+  assert.match(line, /This journey will cost you about £/);
+  assert.match(line, new RegExp(`20 mi · ${litres.toFixed(0)} L`));
   assert.ok(Math.abs(parseFloat(line.match(/£([\d.]+)/)[1]) - cost) < 0.03, `${line} ≈ £${cost.toFixed(2)}`);
 });
 

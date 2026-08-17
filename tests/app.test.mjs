@@ -249,6 +249,8 @@ test("a town name geocodes, and the app says what it matched", async () => {
   assert.match(note, /Showing prices near Testville, Testshire/,
     "a fuzzy match must be announced, not silently trusted");
   assert.ok(await page.evaluate(() => document.querySelectorAll("#results .station").length) > 0);
+  assert.match(await page.evaluate(() => document.getElementById("pcMatched").textContent),
+    /≈ Testville, Testshire/, "the match shows under the input box itself");
 });
 
 test("a failed refresh keeps the real stations instead of swapping in sample data", async () => {

@@ -118,6 +118,7 @@
   /* Styled after a real dash gauge: 0 and 1 at the ends, ticks at every eighth with
      the quarters taller. The tick row is inset by half a thumb-width each side so the
      marks line up with where the thumb actually travels. */
+  .matched{font-size:12px;color:var(--ink-soft);margin-top:5px;min-height:0;}
   .level-fine{margin-top:10px;}
   .gauge-row{display:flex;align-items:flex-start;gap:10px;}
   .gauge-row .end{font-size:12px;font-weight:700;color:var(--ink-soft);line-height:20px;}
@@ -238,6 +239,7 @@
           <div class="inp"><input id="postcode" type="text" inputmode="text" autocomplete="postal-code" placeholder="e.g. NG1 5FS or Nottingham"></div>
           <button class="btn ghost" id="useGps" type="button" title="Use my location">📍</button>
         </div>
+        <div class="matched" id="pcMatched"></div>
       </div>
       <div class="field">
         <label for="radius">Search radius</label>
@@ -857,6 +859,7 @@
       // --- near me ---
       const pc = $("postcode").value.trim();
       if (pc) userLoc = await geocode(pc);
+      $("pcMatched").textContent = (pc && userLoc && userLoc.approx) ? "\u2248 " + userLoc.approx : "";
       if (!userLoc){ setMsg("Enter a postcode or tap 📍 to use your location.", true); return; }
       const radius = num($("radius")) || 8;
 

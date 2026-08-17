@@ -118,6 +118,13 @@ only, so re-check before buying:
 | **brimthetank** | free | free | Charming idiom, brandable; says nothing about price comparison. |
 | **truecostfuel** | free | free | Accurate but clunky. |
 
+**Second batch, checked 2026-08-17** (first batch all still free that day too):
+`perlitre.uk` (stylish — the unit itself; but EV is per kWh), `whichpump.co.uk`
+(memorable; mild *Which?* brand adjacency), `pumpmaths.co.uk`, `petrolmaths.co.uk`
+(excludes diesel semantically), `litrewise.co.uk`, `fillforless.co.uk`,
+`cheapertank.co.uk`, `fillwise.co.uk`. Taken: pumpwise, tankwise, perlitre.co.uk,
+drivecheaper. Recommendation unchanged: **fuelmaths** — broadest, EV-proof.
+
 Taken as of the check: `fillup` in every form, `truefuel`, `tankful`, `fillsmart`.
 **Avoid anything containing "fuelfinder"** — it's the government scheme's name, and
 trading under it invites confusion in both directions.

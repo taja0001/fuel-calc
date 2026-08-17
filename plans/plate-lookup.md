@@ -88,14 +88,47 @@ through our Worker to DVLA. That must be said plainly at the point of use ("chec
 against DVLA via our relay; never stored") and in the README. Plates are
 quasi-personal data; the privacy stance is the brand.
 
+## ⚠ Blocked at DVLA's end (checked 2026-08-17)
+
+The VES guide says: **"Registration closed. We are currently not accepting new VES API
+registrations while we make some system upgrades."** So the key cannot be obtained yet.
+Check the portal periodically, or email dvlaapiaccess@dvla.gov.uk (subject "VES API
+technical query") asking to be notified when it reopens. Everything else on the page
+confirms the design: POST with `x-api-key`, response carries exactly the fields the
+accuracy ladder needs (`fuelType`, `co2Emissions`, `yearOfManufacture`), a UAT
+environment with canned test plates (e.g. ER19BAD → 400), and per-client throttling.
+One key per customer.
+
+**Portal and application notes** (from reviewing the portal 2026-08-17):
+- The right listing is **"Vehicle Enquiry Service"** on the available-APIs page — the
+  openly-registerable free tier. Ignore KADOE / driver-data APIs; those are restricted
+  services for insurers and enforcement.
+- Application wording, when it reopens: *"a free fuel price comparison web app; the
+  plate lookup pre-fills a car's approximate mpg from its fuel type and CO₂ figure, so
+  users don't need to know it."* Dozens of lookups/day, far under any limit.
+- Endpoints: prod `https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles`,
+  UAT `https://uat.driver-vehicle-licensing.api.gov.uk/...` — POST
+  `{"registrationNumber":"AB12CDE"}` (no spaces), auth via `x-api-key` header only.
+- Errors to surface honestly in the UI: **404 = vehicle not found** ("check the plate"),
+  429 throttled, 5xx DVLA down → lookup greys out, presets/manual untouched.
+- **Key discipline:** the key never touches the repo or any chat — it goes straight
+  into the Worker's secret settings, same rule as the Fuel Finder credentials on the Pi.
+- Buildable before any key exists: the Worker + UI can be written and CI-tested against
+  a mock VES (same pattern as the fetcher's mock API), then pointed at UAT, then prod.
+
 ## Dependencies and sequence
 
-1. **Presets first** (small hatchback / family car / SUV / van) — no backend, helps
-   everyone immediately, and remains the fallback forever. Front-end only.
-2. **Thomas registers for a VES key** at the DVLA developer portal (free, reviewed —
-   same shape as the Fuel Finder registration).
-3. Worker + UI + tests. The formula is pure and unit-testable; the Worker gets a
-   mock-DVLA test like the fetcher's mock API.
+With registration frozen, the sequence inverts: **presets are promoted from fallback
+to the feature** — pure front-end, no permission needed, and they fix everyone
+defaulting to 45 mpg today. The plate lookup slots in above them when DVLA reopens.
+
+1. **Presets now** (small hatchback / family car / SUV / van) — one tap, editable,
+   fallback forever (hybrids refused, pre-2001 no CO₂, offline, DVLA down).
+2. **Email dvlaapiaccess@dvla.gov.uk** to queue for reopening; check the portal
+   periodically.
+3. Worker + UI + tests against mock VES, then UAT, then prod when the key lands.
+   UI sketch: a "look up my car" plate field beside the mpg box → pre-fills
+   "≈ 37 mpg (2019 Mazda, petrol)", editable as ever.
 
 ## Validating the formula
 

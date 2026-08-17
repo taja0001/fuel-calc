@@ -159,6 +159,13 @@ test("ranks by true cost: the cheap-but-far forecourt beats the dear-but-near on
   const expected = 37.5 * 1.40 + (road * 2) / 45 * 4.54609 * 1.40;
   assert.ok(Math.abs(r[0].total - expected) < 0.02, `${r[0].total} ≈ ${expected.toFixed(2)}`);
   assert.match(r[0].meta, /\d+ min/, "drive time shown when OSRM answered");
+  const live = await page.evaluate(() => ({
+    readout: document.querySelector(".readout").getAttribute("aria-live"),
+    atomic: document.querySelector(".readout").getAttribute("aria-atomic"),
+    msg: document.getElementById("msg").getAttribute("aria-live"),
+  }));
+  assert.deepEqual(live, { readout: "polite", atomic: "true", msg: "polite" },
+    "results and errors must be announced to screen readers");
 });
 
 test("a closed forecourt with the lowest total never takes the top spot", async () => {

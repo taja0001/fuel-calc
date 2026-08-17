@@ -217,7 +217,7 @@
     <div class="tag">Pump price plus the fuel to drive there and back.</div>
   </header>
 
-  <div class="readout">
+  <div class="readout" aria-live="polite" aria-atomic="true">
     <div class="lbl">Best option</div>
     <div class="total" id="bestTotal">£0.00</div>
     <div class="where" id="bestWhere">Enter your details and search</div>
@@ -315,7 +315,7 @@
 
   <button class="btn block" id="search" type="button">Find the cheapest fill-up</button>
 
-  <div id="msg"></div>
+  <div id="msg" aria-live="polite"></div>
   <div class="results" id="results"></div>
 
   <footer id="foot">
@@ -1146,6 +1146,10 @@
       (real road distance ÷ your mpg × pump price). True cost is the two added together, so a cheap-but-far station is
       judged fairly against a dearer one nearby.</p>`;
     res.appendChild(how);
+
+    // The headline updates ABOVE the viewport on a phone — the user taps search next
+    // to the results and the big answer changes out of sight. Only scrolls if needed.
+    document.querySelector(".readout").scrollIntoView({behavior: "smooth", block: "nearest"});
   }
 
   // Remember your car on THIS device only. Saved in your browser's localStorage —

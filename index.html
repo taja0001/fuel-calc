@@ -669,8 +669,10 @@
   // `approx`, and the app SAYS what it matched: OS Open Names only knows populated
   // places, so "Devon" matches a Scottish village called Crook of Devon — a silent
   // wrong guess would send someone 300 miles the wrong way.
+  const geoCache = new Map();   // successes only — errors must stay retryable
   async function geocode(q){
     q = q.trim();
+    if (geoCache.has(q)) return geoCache.get(q);
     const kind = /^[A-Za-z]{1,2}\d[A-Za-z\d]?\s*\d[A-Za-z]{2}$/.test(q) ? "postcode"
                : /^[A-Za-z]{1,2}\d[A-Za-z\d]?$/.test(q) ? "outcode" : "place";
     let r;
@@ -689,10 +691,14 @@
       const p = (d.result || [])[0];
       if (!p) throw new Error("Couldn't find that place — try a town name or a postcode.");
       const where = p.name_1 + (p.county_unitary || p.region ? ", " + (p.county_unitary || p.region) : "");
-      return {lat: p.latitude, lng: p.longitude, label: p.name_1, approx: where};
+      const hit = {lat: p.latitude, lng: p.longitude, label: p.name_1, approx: where};
+      geoCache.set(q, hit);
+      return hit;
     }
-    return {lat: d.result.latitude, lng: d.result.longitude, label: d.result.postcode || q.toUpperCase(),
+    const hit = {lat: d.result.latitude, lng: d.result.longitude, label: d.result.postcode || q.toUpperCase(),
             ...(kind === "outcode" ? {approx: q.toUpperCase() + " (district centre)"} : {})};
+    geoCache.set(q, hit);
+    return hit;
   }
 
   $("useGps").addEventListener("click", () => {
@@ -730,7 +736,13 @@
   $("search").addEventListener("click", run);
   $("postcode").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
 
+  let searching = false;
   async function run(){
+    // One search at a time: Enter, the GPS callback and the fuel-type rerun all enter
+    // here, and two in flight can finish out of order — the late one painting stale
+    // results over fresh ones.
+    if (searching) return;
+    searching = true;
     const btn = $("search");
     btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Searching…';
     try {
@@ -929,6 +941,7 @@
     } catch(e){
       setMsg(e.message || "Something went wrong — try again.", true);
     } finally {
+      searching = false;
       btn.disabled = false; btn.textContent = "Find the cheapest fill-up";
     }
   }
@@ -1181,6 +1194,13 @@
       setLevel(level);   // the litres-to-fill readout was computed from the default tank
     }
   } catch {}
+  // Comparing grades shouldn't cost a button press per grade: changing the fuel type
+  // re-runs the last search. A full rerun, not a price swap on screen — different
+  // forecourts sell different grades, so the shortlist itself can change.
+  $("fuel").addEventListener("change", () => {
+    if ($("results").querySelector(".station")) run();
+  });
+
   ["mpg","tank","fuel"].forEach(id => $(id).addEventListener("change", () => {
     try {
       localStorage.setItem(CAR_KEY, JSON.stringify({

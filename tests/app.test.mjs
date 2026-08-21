@@ -286,6 +286,22 @@ test("a town name geocodes, and the app says what it matched", async () => {
     /≈ Testville, Testshire/, "the match shows under the input box itself");
 });
 
+test("changing fuel type re-runs the search without pressing the button", async () => {
+  // back to near-me with results on screen (fixture B7 = E10 price + 12)
+  await page.locator('.mode-btn[data-mode="near"]').click();
+  await page.locator("#useGps").click();
+  await page.locator("#search").click();
+  await page.waitForFunction(() =>
+    document.getElementById("bestSub").textContent.includes("@"), null, { timeout: 15000 });
+  const before = await page.evaluate(() => document.getElementById("bestSub").textContent);
+  await page.selectOption("#fuel", "B7");                 // fires the change event
+  await page.waitForFunction(b =>
+    document.getElementById("bestSub").textContent !== b, before, { timeout: 15000 });
+  const after = await page.evaluate(() => document.getElementById("bestSub").textContent);
+  // cheapest open E10 is 140.0; its B7 is 152.0 — the headline must now quote a B7 price
+  assert.match(after, /@ 152\.0p/, "headline reprices to the diesel figure");
+});
+
 test("a failed refresh keeps the real stations instead of swapping in sample data", async () => {
   await page.context().route("**/data/prices.json", r => r.abort());
   await page.clock.setFixedTime(FIXED + 10 * 60000);        // past the 5-minute throttle

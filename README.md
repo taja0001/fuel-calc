@@ -57,6 +57,7 @@ route for journey mode). Both are cookieless and need no key.
 | `scripts/validate-prices.mjs` | Sanity-checks `prices.json`; run by GitHub Actions on every push. |
 | `.github/workflows/validate-prices.yml` | The one live Action. Validates data only — no API access. |
 | `workflows/update-prices.yml` | **Parked, does nothing.** Not in `.github/`, so GitHub never reads it. Kept as a record of why Actions can't do the fetch. |
+| `pi/README.md` | The contract the Pi's off-repo runner must honour — step order and the post-push heartbeat. |
 | `CHANGELOG.md` | What's changed and when. |
 | `manifest.json` | Web app manifest — name, icon, standalone display, theme colour. |
 | `sw.js` | Service worker: caches the shell, keeps the last prices for offline. |
@@ -77,7 +78,12 @@ Node 20+, no dependencies (uses the built-in `fetch`). It:
    one. Override with `FF_ALLOW_SHRINK=1`, or move the floor with `FF_MIN_RATIO`.
 6. Rewrites `data/prices.json` only when a price actually changed, so quiet hours
    produce no commit.
-7. Pings `FF_PING_URL` on success, if set (see **Knowing when the Pi dies**).
+
+The fetcher deliberately does **not** send the `FF_PING_URL` heartbeat — the commit
+and push happen in the Pi's runner, after the fetcher exits, and pinging before the
+push kept the dead-man's switch green while a rejected push left the site serving
+stale prices. The runner pings after its push step instead (see **Knowing when the
+Pi dies** and [`pi/README.md`](pi/README.md)).
 
 Only the app's own fields are written out: brand, name, postcode, lat/lng to 5 decimal
 places, and prices for the grades a station actually sells. The `node_id` is used
@@ -121,7 +127,7 @@ Each run logs what it discarded, so a sudden jump is visible in `fuel.log`.
 | Variable | Required | Purpose |
 |---|---|---|
 | `FF_CLIENT_ID`, `FF_CLIENT_SECRET` | yes | Fuel Finder API credentials (never committed). |
-| `FF_PING_URL` | no | Pinged after a successful run; drives the dead-man's switch. |
+| `FF_PING_URL` | no | Dead-man's-switch ping URL. Consumed by the **runner** after a successful push, not by the fetcher (see `pi/README.md`). |
 | `FF_MIN_RATIO` | no | Minimum share of the previous run's station count. Default `0.9`. |
 | `FF_ALLOW_SHRINK` | no | Set to `1` to publish a genuine large drop anyway. |
 | `FF_BASE` | no | Override the API base URL. |
@@ -145,8 +151,11 @@ What still works offline: opening the app, all ~8,000 cached prices, and searchi
 current location. Distances fall back to straight-line × 1.3 because OSRM is
 unreachable. Postcode search can't work at all, and says so, pointing at the 📍 button.
 
-**`VERSION` in `sw.js` only needs bumping to force old caches out** — if the precache
-list or these strategies change. Ordinary edits to `index.html` propagate by themselves:
+**`VERSION` in `sw.js` only needs bumping to force the old shell cache out** — if the
+precache list or these strategies change. The prices cache sits outside the versioning
+(it's named `data`, unversioned) so a bump never deletes a user's cached prices — they
+may be the only copy an offline user has, and the worker migrates any old versioned
+data cache across on activate. Ordinary edits to `index.html` propagate by themselves:
 the shell is served one load behind by design, and when the background refresh finds a
 newer page than the one on screen, the worker tells the page and an **"App updated —
 tap to refresh"** pill appears. Returning to the foreground triggers the same check, so
@@ -157,7 +166,7 @@ already-fixed bugs.
 ## Tests
 
 `npm install` once, then `npm test` (or `PW_CHANNEL=chrome npm test` to reuse the
-Chrome you already have instead of downloading Chromium). Two layers, both run by
+Chrome you already have instead of downloading Chromium). Three layers, all run by
 GitHub Actions on every push that touches the app:
 
 - **Unit** — the fetcher's pure functions against shapes the real feed has actually
@@ -168,7 +177,13 @@ GitHub Actions on every push that touches the app:
   once regressed by hand: a closed forecourt with the lowest total never taking the
   top spot, the greying and pills, brand folding ("Kirkby Motors" is not Moto), slider
   eighths reaching the maths, and a failed refresh keeping real data rather than
-  swapping in samples.
+  swapping in samples. The service worker is blocked in this suite — Playwright's
+  request interception and worker-controlled pages don't mix.
+- **Service worker** — a separate suite with *no* request interception, so the real
+  `sw.js` handles real fetches against the tests' own server (which sends ETags, since
+  that's how the worker detects a changed shell): prices served from cache with the
+  offline footer when the network drops or the server errors mid-deploy, and the "App
+  updated" toast appearing when the shell changes.
 
 `npm run lint` checks the constraints that have actually shipped bugs: the charset
 declaration staying inside the first 1024 bytes (past it, every £ renders as Â£ on any
@@ -210,9 +225,14 @@ things cover it:
   export FF_PING_URL=https://hc-ping.com/your-uuid-here
   ```
 
-  The fetcher pings it after every successful run, including runs where prices hadn't
-  moved. If the Pi loses power, loses its network, or the fetch keeps failing, the
-  pings stop and healthchecks.io emails you. A failed ping never fails the run.
+  The **runner** pings it as its last step, *after* the commit and push (and after
+  no-change runs, where there's nothing to push). The order matters: the ping used to
+  be sent by the fetcher, before the push existed — so an expired PAT or a rejected
+  push left the site serving stale prices while the switch stayed green, the one
+  failure class it exists to catch. If the Pi loses power, loses its network, the
+  fetch keeps failing, **or the push is refused**, the pings stop and healthchecks.io
+  emails you. A failed ping never fails the run. The exact runner step is in
+  [`pi/README.md`](pi/README.md).
 
 ## The Raspberry Pi
 
@@ -226,7 +246,9 @@ export FF_CLIENT_SECRET=your_client_secret
 ```
 
 **`~/fuel/update-fuel-prices.sh`** — the hourly runner. Waits for the network (wakes
-idle wifi), then pulls, runs the fetcher, and commits/pushes, retrying up to 3× on a
+idle wifi), then pulls, runs the fetcher, commits/pushes, and finally pings
+`FF_PING_URL` — the heartbeat comes *after* the push so a rejected push stops the
+pings (the full contract is in [`pi/README.md`](pi/README.md)). Retries up to 3× on a
 transient failure. Scheduled in the user crontab:
 
 ```

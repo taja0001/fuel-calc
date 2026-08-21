@@ -5,6 +5,78 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ---
 
+## 2026-08-19
+
+Fixes from an adversarial review of the whole codebase — seven findings verified
+against the running app before anything was changed, then fixed together because the
+service-worker ones interlock: shipping any `sw.js` change bumps `VERSION`, and until
+today a bump had a cost of its own (below).
+
+**A service-worker update can no longer delete your cached prices.** The prices cache
+was versioned like the shell, so activating a new worker deleted the old one — the only
+copy an offline user had — and the replacement sat empty until the next successful
+fetch. Upgrade offline, get the 8-station sample set. The prices cache is now
+unversioned (`data`), version bumps never touch it, and the worker migrates any old
+versioned cache across on activate. This landed in the same change as the first
+`VERSION` bump, deliberately.
+
+**Cached prices now survive a server error, not just a dead network.** The worker fell
+back to cache only when the fetch *threw*; an HTTP 404/503 — routine for a static host
+mid-deploy, and this repo deploys ~24 times a day — was passed straight through, so a
+returning user with perfectly good cached prices got the sample set on a
+first-of-session load. An error response now falls back to cache too, marked offline,
+and only escapes when there's nothing cached at all.
+
+**The update toast now updates in one tap.** The page was cached under two keys — `/`
+and `/index.html` — refreshed by disjoint paths (navigations vs the foreground-resume
+nudge), so after a deploy the "App updated — tap to refresh" toast could reload the
+*old* copy and reappear: two taps to actually update, in exactly the iOS home-screen
+scenario the toast was built for. One canonical cache key now, which also halves the
+install download.
+
+**Worker fixes now reach resumed apps.** Browsers only re-check `sw.js` itself on
+navigation or ~24 hours after a functional event — and a home-screen app resumed from
+memory never navigates, so everything above could sit undelivered for days. The
+foreground-resume path now calls `registration.update()` alongside its existing checks,
+behind the same 5-minute throttle.
+
+**Journey mode announces fuzzy place matches.** The 2026-08-17 entry below claims the
+announcement covers "both journey fields" — it didn't; only near-me read the geocoder's
+`approx`. A journey to "Devon" silently routed to Crook of Devon, Perthshire — the
+300-miles-wrong guess the feature exists to prevent. Both journey fields now announce
+("Routing to Crook of Devon, Perth and Kinross — not where you meant? Try a
+postcode."), with a regression test.
+
+**Escaped the one forgotten innerHTML sink.** The "lowest pump price" notice piped
+feed-supplied station names into `innerHTML` unescaped — every other sink escapes them,
+this one path forgot. Latent today (no forecourt's trading name contains markup), but
+the day one does, it's script execution with no CSP behind it. The escaper is now a
+shared helper used by every sink.
+
+**A valid-but-empty prices.json can no longer wipe the real stations.** `loadStations`
+assigned the global before checking the length, so a 200 with an empty list destroyed
+~7,976 real stations on the way to the very catch block that exists to keep them
+(`fe1bc88`'s fix, missed via this path). Parse into a local, validate, then assign.
+
+**The heartbeat can no longer vouch for a push that never happened.** The fetcher
+pinged healthchecks.io on success — but the commit and push live in the Pi's runner,
+*after* the fetcher exits, so an expired PAT or rejected push kept the site serving
+stale prices while the dead-man's switch stayed green: the one failure class it exists
+to catch. The fetcher no longer pings at all; the runner pings as its last step, after
+the push (and after clean no-change runs). The runner's contract is now written down in
+`pi/README.md`.
+
+**The service worker finally has tests.** A third suite (`tests/sw.test.mjs`) drives
+the real worker with no request interception — the tests' own server plays the network,
+sending the ETags the worker uses to detect a changed shell. Covered: prices served
+from cache with the offline footer when the network drops *and* when the server errors
+mid-deploy, and the update toast: it appears when the shell changes, one tap serves
+the new page, and no second toast follows. Two of the bugs above would have been
+caught by it — verified by running the suite against the pre-fix worker, which fails
+on exactly the one-tap assertions.
+
+---
+
 ## 2026-08-17
 
 **Search by town name or half postcode.** "Nottingham" or "NG1" now works anywhere a

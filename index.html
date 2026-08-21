@@ -334,6 +334,10 @@
   const DETOUR = 1.3;           // straight-line -> road distance factor (fallback only)
   const $ = id => document.getElementById(id);
   const gbp = n => "£" + (isFinite(n) ? n : 0).toFixed(2);
+  // Every external string headed for innerHTML — feed-supplied names, geocode labels —
+  // goes through here. One forgotten sink is script execution the day a forecourt's
+  // trading name contains a tag, and there's no CSP to catch it.
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const label = s => {
     const brand = s.brand || "", place = s.name || s.postcode || "";
     if (!place) return brand;
@@ -603,8 +607,12 @@
       // on a cell that carries no data.
       servedFromCache = r.headers.get("X-From-Cache") === "1";
       const d = await r.json();
-      stations = d.stations || [];
-      if (!stations.length) throw 0;
+      // Validate before assigning the global. Assigning first meant a 200 with an
+      // empty stations list destroyed the real data on its way to the catch below —
+      // the exact wipe that catch exists to prevent.
+      const fetched = d.stations || [];
+      if (!fetched.length) throw 0;
+      stations = fetched;
       dataGeneratedAt = d.generated_at || null;
       dataNote = "";
     } catch {
@@ -784,6 +792,14 @@
         const litresNow = tank * (level/100);
         const rangeMi = (mpg > 0 && litresNow > 0) ? litresNow/LPG*mpg : Infinity;
         const notes = [];
+        // Same rule as near-me: a place or half-postcode geocode is a guess about
+        // where you meant, and here a silent wrong guess routes the whole journey —
+        // "Devon" matches a Scottish village 300 miles away. External data headed
+        // for innerHTML, so escaped.
+        if (startPc && start.approx) notes.push({html:
+          `Route starts near <b>${esc(start.approx)}</b> — not where you meant? Try a postcode.`});
+        if (dest.approx) notes.push({html:
+          `Routing to <b>${esc(dest.approx)}</b> — not where you meant? Try a postcode.`});
         let usable = cand;
         if (isFinite(rangeMi)){
           const reach = rangeMi * 0.95;                  // leave a little in reserve
@@ -867,8 +883,7 @@
       // The name is external data headed for innerHTML, so it gets escaped.
       const nearNotes = [];
       if (userLoc.approx && pc){
-        const esc = String(userLoc.approx).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-        nearNotes.push({html: `Showing prices near <b>${esc}</b> — not where you meant? Try a postcode.`});
+        nearNotes.push({html: `Showing prices near <b>${esc(userLoc.approx)}</b> — not where you meant? Try a postcode.`});
       }
 
       // Only open the grid cells that fall within the radius, rather than measuring
@@ -1005,7 +1020,9 @@
     if (cheapestPump !== best){
       const n = document.createElement("div");
       n.className = "notice";
-      n.innerHTML = `<b>${label(cheapestPump.s)}</b> has the lowest pump price (${cheapestPump.price.toFixed(1)}p) but it's ${cheapestPump.dist.toFixed(1)} mi away — once you count the drive, <b>${label(best.s)}</b> works out cheaper.`;
+      // label() carries feed-supplied names — every innerHTML sink escapes them, and
+      // this one forgot.
+      n.innerHTML = `<b>${esc(label(cheapestPump.s))}</b> has the lowest pump price (${cheapestPump.price.toFixed(1)}p) but it's ${cheapestPump.dist.toFixed(1)} mi away — once you count the drive, <b>${esc(label(best.s))}</b> works out cheaper.`;
       res.appendChild(n);
     }
 
@@ -1188,8 +1205,15 @@
     if (Date.now() - lastChecked < 5 * 60000) return;   // don't hammer on every glance
     lastChecked = Date.now();
     // Nudge the shell too: a resumed home-screen app never navigates, so this is its
-    // only chance to notice the app itself has updated (the worker compares and tells us).
-    fetch("index.html", {cache: "no-cache"}).catch(() => {});
+    // only chance to notice the app itself has updated (the worker compares and tells
+    // us). "./" — the worker's one canonical page key — so the copy this refreshes is
+    // the copy a reload serves.
+    fetch("./", {cache: "no-cache"}).catch(() => {});
+    // And re-check sw.js itself: browsers only byte-check the worker on navigation or
+    // ~24h after a functional event, and a resumed home-screen app never navigates —
+    // without this, worker fixes reach it days late or only on a cold start.
+    if ("serviceWorker" in navigator)
+      navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {});
     const before = dataGeneratedAt;
     await loadStations(true);
     showFreshness();

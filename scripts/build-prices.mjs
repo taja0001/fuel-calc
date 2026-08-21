@@ -22,9 +22,10 @@ const PRICE_URL = `${BASE}/pfs/fuel-prices`;
 // comparison against NaN is false, which would quietly switch the guard off.
 const MIN_RATIO    = Number(process.env.FF_MIN_RATIO) || 0.9;
 const ALLOW_SHRINK = process.env.FF_ALLOW_SHRINK === "1";
-// Optional dead-man's switch: a URL to ping on success (e.g. healthchecks.io). If the
-// Pi dies or the fetch keeps failing, the pings stop and that service raises the alarm.
-const PING_URL = process.env.FF_PING_URL || "";
+// The FF_PING_URL heartbeat is NOT sent from here. This script only writes the file;
+// the commit and push live in the Pi's runner, and pinging before the push kept the
+// dead-man's switch green through an expired PAT or a rejected push — the one failure
+// class it exists to catch. The runner pings after its push step (see pi/README.md).
 
 // The feed carries a few malformed records. A handful of forecourts report prices in
 // pounds (1.309 instead of 130.9), and a few have latitude and longitude swapped or
@@ -39,20 +40,6 @@ const COMMON = {
   "Accept": "application/json",
 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-// Never let a failed ping fail the run — the prices are already safely written.
-async function heartbeat() {
-  if (!PING_URL) return;
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 10000);
-    try { await fetch(PING_URL, { signal: ctrl.signal }); }
-    finally { clearTimeout(timer); }
-    console.log("Heartbeat sent.");
-  } catch (e) {
-    console.warn("Heartbeat failed (ignored):", e.message);
-  }
-}
 
 async function getToken() {
   const r = await fetch(TOKEN_URL, {
@@ -293,7 +280,6 @@ async function main() {
 
   if (newBody === oldBody) {
     console.log(`No price changes (${out.length} stations) — prices.json left unchanged.`);
-    await heartbeat();
     return;
   }
 
@@ -304,7 +290,6 @@ async function main() {
     stations: out,
   }));
   console.log(`Wrote data/prices.json with ${out.length} stations (data changed).`);
-  await heartbeat();
 }
 
 // Exported for the unit tests; the env check lives in main() so importing this file

@@ -15,7 +15,8 @@
 //
 // The service worker is deliberately blocked: Playwright's request interception and
 // SW-controlled pages don't mix reliably, and SW-less is also the app's worst case.
-// The update toast is therefore NOT covered here — verified manually 2026-07-30.
+// The worker itself — offline fallback, the update toast — is covered by sw.test.mjs,
+// which runs interception-free for exactly that reason.
 
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -111,12 +112,17 @@ before(async () => {
   });
   await context.route("**/sw.js", r => r.abort());          // see header comment
   // "ZZ9 ..." geocodes to 20 mi north; anything else to the origin — enough to plan
-  // a journey between two distinct places.
+  // a journey between two distinct places. Two place names for the same reason:
+  // "Northtown" sits at the destination, anything else at the origin.
   await context.route("**/api.postcodes.io/**", r => {
     const url = r.request().url();
-    if (url.includes("/places")) return r.fulfill({ contentType: "application/json",
-      body: JSON.stringify({ result: [{ latitude: ORIGIN.lat, longitude: ORIGIN.lng,
-        name_1: "Testville", county_unitary: "Testshire" }] }) });
+    if (url.includes("/places")) {
+      const north = /northtown/i.test(new URL(url).searchParams.get("q") || "");
+      return r.fulfill({ contentType: "application/json",
+        body: JSON.stringify({ result: [{
+          latitude: north ? DEST.lat : ORIGIN.lat, longitude: north ? DEST.lng : ORIGIN.lng,
+          name_1: north ? "Northtown" : "Testville", county_unitary: "Testshire" }] }) });
+    }
     const p = url.includes("ZZ9") ? DEST : ORIGIN;
     return r.fulfill({ contentType: "application/json",
       body: JSON.stringify({ result: { latitude: p.lat, longitude: p.lng, postcode: "X" } }) });
@@ -240,6 +246,26 @@ test("journey mode: the headline panel says what the whole trip costs", async ()
   assert.match(line, /This journey will cost you about £/);
   assert.match(line, new RegExp(`20 mi · ${litres.toFixed(0)} L`));
   assert.ok(Math.abs(parseFloat(line.match(/£([\d.]+)/)[1]) - cost) < 0.03, `${line} ≈ £${cost.toFixed(2)}`);
+});
+
+test("journey mode announces a fuzzy destination match", async () => {
+  // a place-name destination is the 300-miles-wrong trap ("Devon" -> Crook of Devon,
+  // Perthshire) and must be announced, same as near-me announces its guesses
+  await page.locator('.mode-btn[data-mode="journey"]').click();
+  await page.evaluate(() => {
+    document.getElementById("startPc").value = "NG1 1AA";
+    document.getElementById("destPc").value = "Northtown";
+  });
+  await page.locator("#search").click();
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll("#results .notice")].some(n =>
+      n.textContent.includes("Routing to")), null, { timeout: 15000 });
+  const note = await page.evaluate(() =>
+    [...document.querySelectorAll("#results .notice")].map(n => n.textContent).join(" "));
+  assert.match(note, /Routing to Northtown, Testshire/,
+    "a fuzzy destination must be announced, not silently trusted");
+  assert.ok(await page.evaluate(() => document.querySelectorAll("#results .station").length) > 0,
+    "the announcement rides with real results, not instead of them");
 });
 
 test("a town name geocodes, and the app says what it matched", async () => {

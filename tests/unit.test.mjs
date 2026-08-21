@@ -7,6 +7,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { extractPrices, hoursOf, toMinutes } from "../scripts/build-prices.mjs";
+import { dayRow } from "../scripts/build-index.mjs";
 
 const day = (open, close, h24 = false) => ({ open, close, is_24_hours: h24 });
 const week = d => ({ opening_times: { usual_days: {
@@ -87,4 +88,22 @@ test("toMinutes: real ISO timestamps round-trip; garbage is null", () => {
   assert.equal(new Date(m * 60000).toISOString(), "2026-07-30T17:18:00.000Z");
   assert.equal(toMinutes("not a date"), null);
   assert.equal(toMinutes(undefined), null);
+});
+
+const doc = (stations, at = "2026-08-21T18:03:00Z") => ({ generated_at: at, stations });
+const many = (n, prices) => Array.from({ length: n }, () => ({ prices }));
+
+test("dayRow: averages the day and keys it by the snapshot date", () => {
+  const stations = [...many(600, { E10: 150, B7: 170 }), ...many(600, { E10: 160, B7: 180 })];
+  assert.deepEqual(dayRow(doc(stations)), { d: "2026-08-21", E10: 155, B7: 175, n: 1200 });
+});
+
+test("dayRow: a pounds-as-pence record cannot drag the national average", () => {
+  const stations = [...many(1200, { E10: 150, B7: 170 })];
+  stations[0] = { prices: { E10: 1.499, B7: 170 } };      // the archive's known artefact
+  assert.equal(dayRow(doc(stations)).E10, 150);
+});
+
+test("dayRow: refuses a snapshot too thin to be Britain", () => {
+  assert.equal(dayRow(doc(many(8, { E10: 150, B7: 170 }))), null);
 });

@@ -22,6 +22,7 @@ not just the sticker price. It runs on live UK prices from the government
 - **Location** — postcode, half postcode (NG1), town name (Nottingham), or current location — all via postcodes.io. A fuzzy match is announced ("Showing prices near …") rather than silently trusted.
 - **Private saved car** — mpg / tank / fuel type are saved in your browser only (localStorage). Never uploaded, never in the repo, invisible to anyone else.
 - **Freshness indicator** — the footer shows how long ago the prices last changed.
+- **Price trend** — a small chart of the UK average over the last four weeks, drawn from `data/index.json`: one row per day, maintained by the Pi alongside the prices, ~300 bytes over the wire for a month. Hover for any day; a table view sits underneath for screen readers and sceptics.
 - **Price confidence** — a price the feed hasn't confirmed in over a fortnight is badged with its age, rather than shown as though it were current.
 - **Works with no signal** — opens instantly from cache and keeps the last prices you had, which is the situation you're actually in when deciding where to fill up. Location search still works offline; postcode lookup can't, and says so.
 - **Announces its own updates** — a cached app can linger on an old version silently, so when a newer one exists a pill appears: "App updated — tap to refresh". Checked on load and whenever the app returns to the foreground.
@@ -53,6 +54,8 @@ route for journey mode). Both are cookieless and need no key.
 |------|---------|
 | `index.html` | The whole app — UI and logic in one file. |
 | `data/prices.json` | Current prices for ~8,000 UK forecourts. Written by the Pi. |
+| `data/index.json` | The daily price index — one national-average row per day. Written by the Pi, backfillable from git history (`node scripts/build-index.mjs --backfill`). |
+| `scripts/build-index.mjs` | Maintains the daily index; called by the fetcher after each write. |
 | `scripts/build-prices.mjs` | The fetcher: pulls Fuel Finder, merges, writes `prices.json`. |
 | `scripts/validate-prices.mjs` | Sanity-checks `prices.json`; run by GitHub Actions on every push. |
 | `.github/workflows/validate-prices.yml` | The one live Action. Validates data only — no API access. |

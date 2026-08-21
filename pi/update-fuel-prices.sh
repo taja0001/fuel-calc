@@ -23,8 +23,8 @@ done
 run_once(){
   git pull --quiet || return 1
   node scripts/build-prices.mjs || return 1
-  if [ -n "$(git status --porcelain data/prices.json)" ]; then
-    git add data/prices.json
+  if [ -n "$(git status --porcelain data/)" ]; then
+    git add data/
     git commit -m "chore: update fuel prices" --quiet
     git push --quiet || return 1
     log "prices updated and pushed."

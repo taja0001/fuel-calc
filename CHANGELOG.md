@@ -5,6 +5,25 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ---
 
+## 2026-08-21
+
+**The price trend — the archive finally speaks.** Every hour since July the Pi has
+saved a snapshot of every price in Britain into git, and nothing ever read them. Now
+a daily index (`data/index.json`, ~300 bytes gzipped for a month) is distilled from
+that history and drawn as a small chart on the site: UK average unleaded, last four
+weeks, hover for any day, table view underneath. Backfilled from the archive in one
+command; the Pi appends a row a day from here. The known pounds-as-pence artefacts in
+the older archive are filtered before averaging, and the 8-station sample snapshot is
+refused outright — both covered by unit tests.
+
+**Changing fuel type re-runs the search** — comparing unleaded against diesel no
+longer costs a button press per grade. A full re-rank, not a reprice of visible rows
+(different forecourts sell different grades). Forced two fixes along the way: a
+one-search-at-a-time guard on `run()` (a watch-listed race), and a geocode cache so
+grade-flicking doesn't repeat identical postcode lookups.
+
+---
+
 ## 2026-08-19
 
 Fixes from an adversarial review of the whole codebase — seven findings verified

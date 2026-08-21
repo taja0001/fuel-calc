@@ -45,6 +45,9 @@ const STATIONS = [
   S("SUPERSTORE", "TESCO", at(2, 0.2), 145.0, { sm: 1 }),
   S("SERVICES", "Moto", at(2.5, -0.3), 152.0, { mw: 1 }),
 ];
+const INDEX_JSON = JSON.stringify({ days: Array.from({ length: 26 }, (_, i) => ({
+  d: new Date(FIXED - (25 - i) * 86400e3).toISOString().slice(0, 10),
+  E10: 158 + i * 0.1, B7: 176 + i * 0.1, n: 8000 })) });
 const PRICES_JSON = JSON.stringify({
   generated_at: new Date(FIXED - 30 * 60000).toISOString(),
   count: STATIONS.length, stations: STATIONS,
@@ -96,6 +99,7 @@ before(async () => {
     const send = (t, b) => { res.writeHead(200, { "Content-Type": t }); res.end(b); };
     if (p === "/" || p === "/index.html") return send("text/html; charset=utf-8", html);
     if (p === "/data/prices.json") return send("application/json", PRICES_JSON);
+    if (p === "/data/index.json") return send("application/json", INDEX_JSON);
     if (p === "/icon-192.png") return send("image/png", icon);
     if (p === "/manifest.json") return send("application/json", manifest);
     res.writeHead(404); res.end();
@@ -300,6 +304,21 @@ test("changing fuel type re-runs the search without pressing the button", async 
   const after = await page.evaluate(() => document.getElementById("bestSub").textContent);
   // cheapest open E10 is 140.0; its B7 is 152.0 — the headline must now quote a B7 price
   assert.match(after, /@ 152\.0p/, "headline reprices to the diesel figure");
+});
+
+test("the price trend renders from the daily index", async () => {
+  await page.waitForFunction(() => !document.getElementById("trend").hidden, null, { timeout: 10000 });
+  const t = await page.evaluate(() => ({
+    label: document.getElementById("trendSvg").getAttribute("aria-label"),
+    points: document.querySelector("#trendSvg polyline").getAttribute("points").split(" ").length,
+    tip: document.getElementById("trendTip").textContent,
+    tableRows: document.querySelectorAll("#trendTable tr").length,
+  }));
+  assert.match(t.label, /UK average unleaded/);
+  assert.match(t.label, /160\.5p per litre/, "ends at the fixture's last value");
+  assert.equal(t.points, 26, "one point per fixture day");
+  assert.match(t.tip, /160\.5p unleaded/, "rest state shows the latest day");
+  assert.equal(t.tableRows, 27, "table view: header + 26 days");
 });
 
 test("a failed refresh keeps the real stations instead of swapping in sample data", async () => {

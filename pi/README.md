@@ -11,7 +11,11 @@ contract the runner must honour, so the repo stays the source of truth for it.
 1. Wait for the network (wakes idle wifi).
 2. `git pull` this repo.
 3. Run `node scripts/build-prices.mjs` (sourcing `~/fuel/secrets.env` first).
-4. If `data/prices.json` changed: commit and push. A failed push must fail the run.
+4. If anything under `data/` changed: commit and push (`git add data/`, and the
+   changed-check is `git status --porcelain data/` — since 2026-08-21 the fetcher
+   also maintains `data/index.json`, the daily price index; checking only
+   prices.json would leave it permanently uncommitted). A failed push must fail
+   the run.
 5. **Only after all of that succeeded**: ping the heartbeat.
 
 ## The heartbeat ping (step 5)

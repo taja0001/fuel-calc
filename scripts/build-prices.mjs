@@ -8,6 +8,7 @@
 
 import { writeFile, mkdir, readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
+import { updateIndex } from "./build-index.mjs";
 
 const CLIENT_ID     = process.env.FF_CLIENT_ID;
 const CLIENT_SECRET = process.env.FF_CLIENT_SECRET;
@@ -290,6 +291,10 @@ async function main() {
     stations: out,
   }));
   console.log(`Wrote data/prices.json with ${out.length} stations (data changed).`);
+  // The daily price index rides along — one row per day, last write wins, so the row
+  // is the day's closing average. Never fatal: the prices are already safely written.
+  try { if (await updateIndex()) console.log("index.json updated."); }
+  catch (e) { console.warn("index update failed (ignored):", e.message); }
 }
 
 // Exported for the unit tests; the env check lives in main() so importing this file

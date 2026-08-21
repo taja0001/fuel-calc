@@ -204,6 +204,19 @@
   #freshness{font-weight:600;margin-bottom:6px;}
   #freshness.stale{color:var(--warn);}
   footer .ogl{margin-top:8px;font-size:11px;opacity:.75;}
+  #trend{margin:26px 0 0;padding:14px 16px 10px;background:var(--panel);border:1px solid var(--hair);
+    border-radius:14px;box-shadow:var(--shadow);}
+  #trend figcaption{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);
+    font-weight:700;margin-bottom:8px;}
+  #trendSvg{display:block;width:100%;height:64px;touch-action:none;}
+  /* the line wears the app's amber (a graphic, ≥3:1 on both surfaces); text wears ink tokens */
+  #trendSvg polyline{fill:none;stroke:var(--amber);stroke-width:2;stroke-linejoin:round;stroke-linecap:round;}
+  #trendSvg .x{stroke:var(--ink-soft);stroke-width:1;opacity:.6;}
+  #trendSvg circle{fill:var(--amber);}
+  #trendTip{font-size:12px;color:var(--ink-soft);margin-top:6px;font-variant-numeric:tabular-nums;min-height:1.2em;}
+  .trend-data summary{font-size:11.5px;color:var(--ink-soft);cursor:pointer;margin-top:4px;}
+  .trend-data table{font-size:11.5px;color:var(--ink-soft);border-collapse:collapse;margin-top:6px;}
+  .trend-data td,.trend-data th{padding:1px 10px 1px 0;text-align:right;}
   .spin{display:inline-block;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;
     border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px;margin-right:6px;}
   @keyframes sp{to{transform:rotate(360deg);}}
@@ -317,6 +330,13 @@
 
   <div id="msg" aria-live="polite"></div>
   <div class="results" id="results"></div>
+
+  <figure id="trend" hidden>
+    <figcaption id="trendTitle">UK average unleaded — last 4 weeks</figcaption>
+    <svg id="trendSvg" viewBox="0 0 320 64" role="img" preserveAspectRatio="none"></svg>
+    <div id="trendTip">&nbsp;</div>
+    <details class="trend-data"><summary>the numbers</summary><div id="trendTable"></div></details>
+  </figure>
 
   <footer id="foot">
     <div id="freshness"></div>
@@ -1210,6 +1230,52 @@
   }));
 
   loadStations().then(showFreshness);
+
+  // The price trend — data/index.json is one row per day, written by the Pi alongside
+  // the prices. Fetched separately so the main payload stays untouched; it flows
+  // through the worker's stale-while-revalidate, which for daily data is fine.
+  async function loadTrend(){
+    let days;
+    try {
+      const r = await fetch("data/index.json", {cache:"no-cache"});
+      if (!r.ok) return;
+      days = (await r.json()).days || [];
+    } catch { return; }
+    if (days.length < 7) return;                          // a line needs a shape
+    days = days.slice(-28);
+    const svg = $("trendSvg"), W = 320, H = 64, PAD = 6;
+    const vals = days.map(x => x.E10);
+    const lo = Math.min(...vals), hi = Math.max(...vals), span = (hi - lo) || 1;
+    const X = i => PAD + i * (W - 2*PAD) / (days.length - 1);
+    const Y = v => H - PAD - (v - lo) * (H - 2*PAD) / span;
+    const pts = days.map((x, i) => `${X(i).toFixed(1)},${Y(x.E10).toFixed(1)}`).join(" ");
+    const niceDate = d => new Date(d + "T12:00:00").toLocaleDateString("en-GB", {day:"numeric", month:"short"});
+    svg.innerHTML = `<line class="x" x1="0" y1="0" x2="0" y2="${H}" visibility="hidden"/>` +
+      `<polyline points="${pts}"/>` +
+      `<circle cx="${X(days.length-1)}" cy="${Y(vals[vals.length-1])}" r="3"/>`;
+    svg.setAttribute("aria-label",
+      `UK average unleaded, ${niceDate(days[0].d)} to ${niceDate(days[days.length-1].d)}: ` +
+      `${vals[0].toFixed(1)}p to ${vals[vals.length-1].toFixed(1)}p per litre. ` +
+      `Lowest ${lo.toFixed(1)}, highest ${hi.toFixed(1)}.`);
+    const tip = $("trendTip");
+    const show = i => {
+      tip.textContent = `${niceDate(days[i].d)} · ${days[i].E10.toFixed(1)}p unleaded · ${days[i].B7.toFixed(1)}p diesel`;
+      const g = svg.querySelector(".x");
+      g.setAttribute("x1", X(i)); g.setAttribute("x2", X(i)); g.removeAttribute("visibility");
+    };
+    show(days.length - 1);                                 // rest state: today
+    svg.addEventListener("pointermove", e => {
+      const r = svg.getBoundingClientRect();
+      const i = Math.round((e.clientX - r.left) / r.width * (days.length - 1));
+      if (i >= 0 && i < days.length) show(i);
+    });
+    svg.addEventListener("pointerleave", () => show(days.length - 1));
+    $("trendTable").innerHTML = "<table><tr><th>date</th><th>unleaded</th><th>diesel</th></tr>" +
+      days.map(x => `<tr><td>${x.d}</td><td>${x.E10.toFixed(1)}p</td><td>${x.B7.toFixed(1)}p</td></tr>`).join("") +
+      "</table>";
+    $("trend").hidden = false;
+  }
+  loadTrend();
 
   // "Prices updated 8m ago" used to be written once and never touched again, so on a
   // page left open — or a home-screen app resumed rather than reloaded, which is what

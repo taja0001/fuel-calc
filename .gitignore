@@ -3,3 +3,6 @@
 
 # dev tooling only — the app has no dependencies
 node_modules/
+
+# private working notes — handoffs, scratch thinking; never pushed
+notes/

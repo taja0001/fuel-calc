@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Dev tooling only — the app itself (index.html, sw.js, the pipeline scripts) has no dependencies and no build step. Playwright drives the real app in a real browser for the tests.",
   "scripts": {
-    "lint": "node --check scripts/build-prices.mjs && node --check scripts/validate-prices.mjs && node scripts/check-app.mjs",
+    "lint": "node --check scripts/build-prices.mjs && node --check scripts/validate-prices.mjs && node --check scripts/build-index.mjs && node --check scripts/history.mjs && node scripts/check-app.mjs",
     "test": "node --test"
   },
   "devDependencies": {

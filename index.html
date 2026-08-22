@@ -39,7 +39,7 @@
     color-scheme: light dark;
     --ground:#f4f1ea; --panel:#fff; --panel-2:#faf7f0; --ink:#221d16; --ink-soft:#6b6154;
     --hair:#e4ddd0; --hair-strong:#d3c9b7; --amber:#b8720a; --amber-glow:#d98a12;
-    --go:#1f8a4c; --go-soft:#e7f3ec; --warn:#b45309;
+    --go:#1f8a4c; --go-soft:#e7f3ec; --go-ink:#1b7f44; --warn:#b45309;
     --shadow:0 1px 2px rgba(34,29,22,.06),0 12px 28px rgba(34,29,22,.10);
     --readout-bg:#16130f; --readout-ink:#ffb020; --readout-dim:rgba(255,176,32,.30);
     --radius:16px;
@@ -48,13 +48,13 @@
     :root{
       --ground:#141210; --panel:#201c17; --panel-2:#1a1712; --ink:#f2ece1; --ink-soft:#a89c89;
       --hair:#322c24; --hair-strong:#423a30; --amber:#ffb020; --amber-glow:#ffc247;
-      --go:#4fd188; --go-soft:#16271d; --warn:#e0a54a;
+      --go:#4fd188; --go-soft:#16271d; --go-ink:#4fd188; --warn:#e0a54a;
       --shadow:0 1px 2px rgba(0,0,0,.4),0 16px 34px rgba(0,0,0,.5);
       --readout-bg:#0c0a07; --readout-ink:#ffb020; --readout-dim:rgba(255,176,32,.24);
     }
   }
-  :root[data-theme="light"]{color-scheme:light;--ground:#f4f1ea;--panel:#fff;--panel-2:#faf7f0;--ink:#221d16;--ink-soft:#6b6154;--hair:#e4ddd0;--hair-strong:#d3c9b7;--amber:#b8720a;--amber-glow:#d98a12;--go:#1f8a4c;--go-soft:#e7f3ec;--warn:#b45309;--shadow:0 1px 2px rgba(34,29,22,.06),0 12px 28px rgba(34,29,22,.10);--readout-bg:#16130f;--readout-ink:#ffb020;--readout-dim:rgba(255,176,32,.30);}
-  :root[data-theme="dark"]{color-scheme:dark;--ground:#141210;--panel:#201c17;--panel-2:#1a1712;--ink:#f2ece1;--ink-soft:#a89c89;--hair:#322c24;--hair-strong:#423a30;--amber:#ffb020;--amber-glow:#ffc247;--go:#4fd188;--go-soft:#16271d;--warn:#e0a54a;--shadow:0 1px 2px rgba(0,0,0,.4),0 16px 34px rgba(0,0,0,.5);--readout-bg:#0c0a07;--readout-ink:#ffb020;--readout-dim:rgba(255,176,32,.24);}
+  :root[data-theme="light"]{color-scheme:light;--ground:#f4f1ea;--panel:#fff;--panel-2:#faf7f0;--ink:#221d16;--ink-soft:#6b6154;--hair:#e4ddd0;--hair-strong:#d3c9b7;--amber:#b8720a;--amber-glow:#d98a12;--go:#1f8a4c;--go-soft:#e7f3ec;--go-ink:#1b7f44;--warn:#b45309;--shadow:0 1px 2px rgba(34,29,22,.06),0 12px 28px rgba(34,29,22,.10);--readout-bg:#16130f;--readout-ink:#ffb020;--readout-dim:rgba(255,176,32,.30);}
+  :root[data-theme="dark"]{color-scheme:dark;--ground:#141210;--panel:#201c17;--panel-2:#1a1712;--ink:#f2ece1;--ink-soft:#a89c89;--hair:#322c24;--hair-strong:#423a30;--amber:#ffb020;--amber-glow:#ffc247;--go:#4fd188;--go-soft:#16271d;--go-ink:#4fd188;--warn:#e0a54a;--shadow:0 1px 2px rgba(0,0,0,.4),0 16px 34px rgba(0,0,0,.5);--readout-bg:#0c0a07;--readout-ink:#ffb020;--readout-dim:rgba(255,176,32,.24);}
 
   *{box-sizing:border-box;}
   body{margin:0;background:var(--ground);color:var(--ink);line-height:1.5;
@@ -158,6 +158,10 @@
   .st-main .pill.shut{color:var(--warn);background:transparent;border:1px solid var(--warn);}
   .st-main .pill.mway{color:var(--ink-soft);background:transparent;border:1px solid var(--hair-strong);}
   .st-main .pill.old{color:var(--warn);background:transparent;border:1px dashed var(--warn);}
+  /* --go-ink, not --go: this is small text on the bare panel, and light-theme --go
+     measures 4.38:1 on white — just under the 4.5:1 small-text floor. */
+  .st-main .pill.up{color:var(--warn);background:transparent;border:1px solid var(--hair-strong);}
+  .st-main .pill.down{color:var(--go-ink);background:transparent;border:1px solid var(--hair-strong);}
   /* Closed forecourts stay listed — useful when planning tomorrow — but read as muted
      and can never hold the top spot. */
   .station.shut{opacity:.55;}
@@ -447,6 +451,39 @@
     d >= 60  ? Math.round(d/30) + " months" :
     d >= 25  ? "a month" :
     d >= 12  ? Math.round(d/7) + " weeks" : Math.round(d) + " days";
+
+  // --- did this price move this week? ---------------------------------------------
+  // s.hist per grade: [delta] or [delta, over], written by the Pi from its rolling
+  // 7-day file of daily closes (scripts/history.mjs). delta compares today against
+  // the last daily close that DIFFERED, so three +1p days read as one "+3p"; pu says
+  // when the last move landed, so the two pair into "up 3p since Tue". over is how
+  // far today sits above the station's cheapest close of the week — absent means
+  // today IS the week's low, the one fact worth shouting about on a falling price.
+  // No hist at all means steady all week, and steady earns no badge.
+  const DAY_NAMES = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  function sinceWords(s, fuel){
+    const at = s.pu === undefined ? undefined
+             : typeof s.pu === "number" ? s.pu : s.pu[fuel];
+    if (!Number.isFinite(at)) return "this week";
+    const then = new Date(at * 60000), now = new Date();
+    const days = Math.round((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+                           - Date.UTC(then.getFullYear(), then.getMonth(), then.getDate())) / 86400e3);
+    if (days <= 0) return "today";
+    if (days === 1) return "yesterday";
+    if (days >= 7) return "this week";
+    return "since " + DAY_NAMES[then.getDay()];
+  }
+  function histBadge(s, fuel){
+    const h = s.hist && s.hist[fuel];
+    if (!Array.isArray(h) || !Number.isFinite(h[0]) || !h[0]) return null;
+    const up = h[0] > 0;
+    const pence = Math.abs(h[0]);
+    return {
+      cls: up ? "up" : "down",
+      text: (up ? "▲ " : "▼ ") + (pence % 1 ? pence.toFixed(1) : pence) + "p " +
+            sinceWords(s, fuel) + (h.length === 1 ? " · lowest this week" : ""),
+    };
+  }
 
   let level = 25;
   let userLoc = null;
@@ -756,12 +793,14 @@
   $("search").addEventListener("click", run);
   $("postcode").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
 
-  let searching = false;
+  let searching = false, queued = false;
   async function run(){
     // One search at a time: Enter, the GPS callback and the fuel-type rerun all enter
     // here, and two in flight can finish out of order — the late one painting stale
-    // results over fresh ones.
-    if (searching) return;
+    // results over fresh ones. But a trigger that lands mid-search must not be DROPPED
+    // either: on a slow connection, changing fuel while a search ran was silently
+    // ignored — the switch looked broken. Queue it and go again when the field's free.
+    if (searching) { queued = true; return; }
     searching = true;
     const btn = $("search");
     btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Searching…';
@@ -963,6 +1002,9 @@
     } finally {
       searching = false;
       btn.disabled = false; btn.textContent = "Find the cheapest fill-up";
+      // The queued search reads the form as it is NOW, so it reflects every change
+      // that arrived while the last one was in flight — one re-run covers them all.
+      if (queued) { queued = false; run(); }
     }
   }
 
@@ -1067,6 +1109,7 @@
       const opens = r.shut ? opensAt(r.s, now) : "";
       const ageDays = priceAgeDays(r.s, ctx.fuel);
       const stale = ageDays !== null && ageDays >= STALE_DAYS;
+      const moved = histBadge(r.s, ctx.fuel);   // numbers and fixed words only — innerHTML-safe
       el.innerHTML =
         `<div class="rank">${i+1}</div>
          <div class="st-main">
@@ -1076,6 +1119,7 @@
            ${i===0 && !r.shut ? '<span class="pill">Best value</span>' : ''}
            ${r.shut ? `<span class="pill shut">Closed${opens ? " · opens " + opens : ""}</span>` : ''}
            ${stale ? `<span class="pill old">Price ${ageWords(ageDays)} old</span>` : ''}
+           ${moved ? `<span class="pill ${moved.cls}">${moved.text}</span>` : ''}
            ${r.s.mw ? '<span class="pill mway">Motorway services</span>' : ''}
          </div>
          <div class="st-cost">

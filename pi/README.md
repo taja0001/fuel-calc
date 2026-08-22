@@ -45,6 +45,19 @@ Until 2026-08-19 the fetcher (`scripts/build-prices.mjs`) sent this ping itself,
 before the runner had committed or pushed anything. It no longer pings at all — if
 the alert fires after updating the repo on the Pi, the runner is missing step 5.
 
+## The history state file (nothing to do — recorded so it isn't a mystery)
+
+Since 2026-08-22 the fetcher also maintains `~/fuel/history-state.json`: the last
+8 days of daily closing prices per station, feeding the app's "up 2p since Tuesday"
+badges. It deliberately lives outside the repo — it's derivable from the git
+archive, so committing it would double the hourly churn to record nothing new.
+
+The runner doesn't change: the fetcher finds `~/fuel` on its own (a different spot
+can be forced with `FF_STATE` in `secrets.env`). If the file is missing or corrupt —
+first deploy, reimaged SD card — the fetcher rebuilds it from git history
+automatically and says so in the run log, so deleting it is always safe. To rebuild
+by hand: `node scripts/history.mjs --rebuild` from the repo directory.
+
 ## The rest of the Pi setup
 
 Crontab entries, the network watchdog, and the wifi power-save setting are documented

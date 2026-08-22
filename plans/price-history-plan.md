@@ -8,6 +8,15 @@
 > and the timeline is earlier than stated below. Rewriting this is item 6 in
 > [backlog.md](backlog.md). Everything about **what to publish** and **where to compute
 > it** still holds.
+>
+> **Update 2026-08-22: the build order in §8 is complete.** §3a (index + chart)
+> shipped 21 Aug; §3b's per-station scalars shipped 22 Aug as `hist` per grade —
+> `[delta, pence-above-week-low]`, the low reconstructable as `price - over` —
+> computed on the Pi by `scripts/history.mjs` from a rolling state file that
+> rebuilds itself from the archive (`--rebuild` doubles as the §8-step-5 recovery
+> path), with the validator extended per step 6. `h` (days held) was dropped as
+> redundant: `pu` already publishes it. What remains of this plan is §7 — the
+> offline analysis — which still waits on a falling market.
 
 Every hour the Pi commits `data/prices.json` only when a price actually changed. That
 makes the git history an accidental archive of every price move on ~8,000 UK

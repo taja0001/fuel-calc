@@ -5,6 +5,47 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ---
 
+## 2026-08-22
+
+**Every price now carries its week.** Result rows gain a movement badge — green
+"▼ 1p since Mon · lowest this week", amber "▲ 2p since Thu" — so the app answers
+"is now a good time?" as well as "where is cheapest?". The delta compares today
+against the station's last daily close that *differed*, so three +1p days read as
+one +3p; the day names come from the feed's own change timestamps (`pu`), already
+published. "Lowest this week" appears when today's price is the cheapest that
+forecourt has been in 7 days. Steady stations stay quiet — no badge is itself the
+message. On the day it shipped, 5,164 of 8,030 stations (64%) had moved within the
+week: 8,345 grade-level rises against 3,618 falls, July's rising-market asymmetry
+still plainly visible.
+
+**How it's fed:** the Pi keeps a rolling 8-day file of daily closing prices
+(`~/fuel/history-state.json` — outside the repo, since it's derivable and would
+double the hourly churn for nothing). A missing or corrupt file rebuilds itself
+from the git archive in about eight `git show`s; that's the first-deploy bootstrap
+and the SD-card-death recovery in one, and it was exercised against the real
+archive. Payload was measured before shipping, per the standing rule: **+28 KB
+gzipped (+7.1%)**, by publishing "pence above the week's low" instead of the low
+itself (which measured +40 KB) — small offsets compress where prices don't. The CI
+validator now checks the new field's shape: a zero delta, an unknown grade, or a
+week-low outside the sane price band fails the push. Eleven new unit tests cover
+the maths (gaps are not price moves, dips-and-recoveries still report, the window
+prunes); two new browser tests cover the pills.
+
+**A fuel switch landing mid-search is honoured, not dropped.** Yesterday's
+one-search-at-a-time guard had a quiet cost: a fuel change arriving while a search
+was still in flight was silently swallowed — on a slow connection the switch just
+looked broken. It surfaced here as a once-in-seven test flake, was traced to the
+guard, and is fixed by queueing the trigger and re-running when the search
+finishes. A regression test now forces the overlap with a deliberately slow OSRM
+response; it fails on the old code and passes on the new (verified both ways).
+
+Also: the green badge text gets its own `--go-ink` token (light `#1b7f44`, 5.0:1 on
+white) — the existing `--go` measures 4.38:1, under the 4.5:1 small-text floor the
+ultra-review's contrast watch-list is about. No service-worker version bump: the
+shell picks this up on its own, and new data fields are ignored by old shells.
+
+---
+
 ## 2026-08-21
 
 **The price trend — the archive finally speaks.** Every hour since July the Pi has

@@ -9,6 +9,8 @@
 import { writeFile, mkdir, readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { updateIndex } from "./build-index.mjs";
+import { resolveStatePath, loadState, saveState, recordCloses, attachHist, rebuildFromGit }
+  from "./history.mjs";
 
 const CLIENT_ID     = process.env.FF_CLIENT_ID;
 const CLIENT_SECRET = process.env.FF_CLIENT_SECRET;
@@ -256,9 +258,6 @@ async function main() {
   // out of the file every visitor downloads — together they were ~40% of it.
   const out = stations.map(({ id, ...rest }) => rest);
 
-  // Only rewrite the file when the actual data changed. Otherwise the
-  // generated_at timestamp alone would force a needless commit every run.
-  const newBody = JSON.stringify(out);
   let oldBody = "", prevCount = 0;
   try {
     const prev = JSON.parse(await readFile("data/prices.json", "utf8"));
@@ -279,6 +278,34 @@ async function main() {
     );
   }
 
+  // Week-of-price-history scalars for the app's "up 2p since Tuesday" badges — see
+  // scripts/history.mjs for the whole story. Sits after the shrink guard (a refused
+  // run must not advance the state) and before the change-check (a slid window is a
+  // real change worth publishing). The state file lives OUTSIDE the repo and is saved
+  // every run, even no-change ones — each day needs its close recorded. Never fatal:
+  // prices must still publish if history breaks, just badge-less.
+  try {
+    const statePath = resolveStatePath();
+    if (statePath) {
+      const today = new Date().toISOString().slice(0, 10);
+      const state = (await loadState(statePath)) ?? rebuildFromGit(today);
+      recordCloses(state, out, today);
+      const n = attachHist(state, out, today);
+      await saveState(statePath, state);
+      console.log(
+        `History: ${n.moved} stations moved this week ` +
+        `(${n.up} grade rises, ${n.down} falls, ${n.atLow} at a week low).`
+      );
+    } else {
+      console.log("History: skipped — no FF_STATE and no ~/fuel directory.");
+    }
+  } catch (e) {
+    console.warn("History skipped (prices unaffected):", e.message);
+  }
+
+  // Only rewrite the file when the actual data changed. Otherwise the
+  // generated_at timestamp alone would force a needless commit every run.
+  const newBody = JSON.stringify(out);
   if (newBody === oldBody) {
     console.log(`No price changes (${out.length} stations) — prices.json left unchanged.`);
     return;

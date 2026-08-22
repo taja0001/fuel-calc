@@ -37,8 +37,12 @@ const S = (name, brand, pos, price, extra = {}) => ({
   prices: { E10: price, B7: price + 12 }, o: 1, pu: MIN(FIXED) - 60, ...extra,
 });
 const STATIONS = [
-  S("CHEAP FAR", "FuelCo", at(3, 0), 140.0),
-  S("DEAR NEAR", "NearGarage", at(0.5, 0), 155.9),
+  // CHEAP FAR fell 1p an hour ago to its cheapest of the week ([delta] with no
+  // "over" means today IS the week's low); DEAR NEAR rose 2p two days back —
+  // 2026-07-28 was a Tuesday, so its badge must say so.
+  S("CHEAP FAR", "FuelCo", at(3, 0), 140.0, { hist: { E10: [-1] } }),
+  S("DEAR NEAR", "NearGarage", at(0.5, 0), 155.9,
+    { pu: MIN(FIXED) - 2 * 1440, hist: { E10: [2, 3] } }),
   S("NIGHT OFF", "NightOff", at(0.6, 0.1), 139.0, { o: DAY_HOURS }),  // cheapest total, but shut
   S("VILLAGE", "Kirkby Motors", at(1, -0.2), 150.0),
   S("STALE", "OldPrice", at(1.2, 0.3), 149.0, { pu: MIN(FIXED) - 30 * 1440 }),
@@ -199,6 +203,13 @@ test("the savings line matches the arithmetic it claims", async () => {
   assert.ok(Math.abs(parseFloat(save.replace("£", "")) - expected) < 0.02, `${save} ≈ £${expected.toFixed(2)}`);
 });
 
+test("a week's price moves are badged: risers dated, fallers marking the week low, steady quiet", async () => {
+  const r = await rows();
+  assert.match(r.find(x => /DEAR NEAR/.test(x.name)).pills.join(" "), /▲ 2p since Tue/);
+  assert.match(r.find(x => /CHEAP FAR/.test(x.name)).pills.join(" "), /▼ 1p today · lowest this week/);
+  assert.doesNotMatch(r.find(x => /VILLAGE/.test(x.name)).pills.join(" "), /[▲▼]/);
+});
+
 test("a month-old price is badged; motorway services are labelled", async () => {
   const r = await rows();
   assert.match(r.find(x => /STALE/.test(x.name)).pills.join(" "), /Price a month old/);
@@ -304,6 +315,28 @@ test("changing fuel type re-runs the search without pressing the button", async 
   const after = await page.evaluate(() => document.getElementById("bestSub").textContent);
   // cheapest open E10 is 140.0; its B7 is 152.0 — the headline must now quote a B7 price
   assert.match(after, /@ 152\.0p/, "headline reprices to the diesel figure");
+});
+
+test("a fuel switch landing MID-search still takes effect once the search finishes", async () => {
+  // One search at a time is right — but the loser used to be dropped silently, so on a
+  // slow connection changing fuel during a search looked like the switch was broken.
+  // Hold OSRM open long enough that the E10->B7 change is guaranteed to land in flight.
+  const pattern = "**/router.project-osrm.org/table/**";
+  const slow = async r => {
+    await new Promise(res => setTimeout(res, 800));
+    r.fulfill({ contentType: "application/json", body: osrmTable(r.request().url()) });
+  };
+  await page.context().route(pattern, slow);      // registered last, so it wins
+  try {
+    await page.selectOption("#fuel", "E10");      // re-runs: results are on screen
+    await page.selectOption("#fuel", "B7");       // lands while that run awaits OSRM
+    await page.waitForFunction(() =>              // the in-flight E10 search paints first
+      document.getElementById("bestSub").textContent.includes("@ 140.0p"), null, { timeout: 15000 });
+    await page.waitForFunction(() =>              // then the queued B7 run replaces it
+      document.getElementById("bestSub").textContent.includes("@ 152.0p"), null, { timeout: 15000 });
+  } finally {
+    await page.context().unroute(pattern, slow);
+  }
 });
 
 test("the price trend renders from the daily index", async () => {

@@ -6,8 +6,12 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { extractPrices, hoursOf, toMinutes } from "../scripts/build-prices.mjs";
 import { dayRow } from "../scripts/build-index.mjs";
+import { recordCloses, histFor, attachHist, keyOf, loadState, saveState } from "../scripts/history.mjs";
 
 const day = (open, close, h24 = false) => ({ open, close, is_24_hours: h24 });
 const week = d => ({ opening_times: { usual_days: {
@@ -106,4 +110,113 @@ test("dayRow: a pounds-as-pence record cannot drag the national average", () => 
 
 test("dayRow: refuses a snapshot too thin to be Britain", () => {
   assert.equal(dayRow(doc(many(8, { E10: 150, B7: 170 }))), null);
+});
+
+// --- the week-of-history scalars behind the "up 2p since Tuesday" badges ----------
+// hist per grade is [delta] or [delta, over]: delta against the last DIFFERING daily
+// close, over = pence above the week's low (absent when today IS the low).
+
+const stn = prices => ({ postcode: "NG1 1AA", brand: "Bran", name: "Nam", prices });
+const fresh = () => ({ v: 1, stations: {} });
+const replay = (state, days) => {
+  let s;
+  for (const [date, prices] of days) recordCloses(state, [s = stn(prices)], date);
+  return s;
+};
+
+test("history: a rise reads as +delta, sitting that far above the week's low; steady grades stay silent", () => {
+  const state = fresh();
+  const s = replay(state, [
+    ["2026-08-18", { E10: 150.9, B7: 160.9 }],
+    ["2026-08-19", { E10: 150.9, B7: 160.9 }],
+    ["2026-08-20", { E10: 152.9, B7: 160.9 }],
+  ]);
+  assert.deepEqual(histFor(state.stations[keyOf(s)], s.prices, "2026-08-20"),
+    { E10: [2, 2] });
+});
+
+test("history: a fall to the week's cheapest omits 'over' — today IS the low", () => {
+  const state = fresh();
+  const s = replay(state, [
+    ["2026-08-18", { E10: 151.9 }],
+    ["2026-08-19", { E10: 151.9 }],
+    ["2026-08-20", { E10: 150.4 }],
+  ]);
+  assert.deepEqual(histFor(state.stations[keyOf(s)], s.prices, "2026-08-20"),
+    { E10: [-1.5] });                      // float dust rounded away: not -1.5000000000000142
+});
+
+test("history: steady all week says nothing at all", () => {
+  const state = fresh();
+  const s = replay(state, [["2026-08-18", { E10: 150.9 }], ["2026-08-20", { E10: 150.9 }]]);
+  assert.equal(histFor(state.stations[keyOf(s)], s.prices, "2026-08-20"), undefined);
+});
+
+test("history: a dip and recovery still reports the move since the dip", () => {
+  const state = fresh();
+  const s = replay(state, [
+    ["2026-08-17", { E10: 152.9 }],
+    ["2026-08-18", { E10: 150.9 }],       // the dip
+    ["2026-08-19", { E10: 152.9 }],       // back up — yesterday's close equals today
+    ["2026-08-20", { E10: 152.9 }],
+  ]);
+  assert.deepEqual(histFor(state.stations[keyOf(s)], s.prices, "2026-08-20"),
+    { E10: [2, 2] });
+});
+
+test("history: days missing from the feed are skipped — a gap is not a price change", () => {
+  const state = fresh();
+  const s = replay(state, [
+    ["2026-08-14", { E10: 150.9 }],       // then absent for five days
+    ["2026-08-20", { E10: 152.9 }],
+  ]);
+  assert.deepEqual(histFor(state.stations[keyOf(s)], s.prices, "2026-08-20"),
+    { E10: [2, 2] });
+});
+
+test("history: closes past the 7-day window are pruned and can't feed a badge", () => {
+  const state = fresh();
+  const s = replay(state, [
+    ["2026-08-10", { E10: 150.9 }],       // 10 days before "today"
+    ["2026-08-20", { E10: 152.9 }],
+  ]);
+  assert.equal(state.stations[keyOf(s)].E10["2026-08-10"], undefined);
+  assert.equal(histFor(state.stations[keyOf(s)], s.prices, "2026-08-20"), undefined);
+});
+
+test("history: a station gone from the feed ages out of the state entirely", () => {
+  const state = fresh();
+  recordCloses(state, [stn({ E10: 150.9 })], "2026-08-10");
+  recordCloses(state, [{ ...stn({ E10: 140 }), name: "Other" }], "2026-08-20");
+  assert.equal(state.stations[keyOf(stn({}))], undefined);
+});
+
+test("history: the pounds-as-pence slip never enters the closes", () => {
+  const state = fresh();
+  recordCloses(state, [stn({ E10: 1.509, B7: 160.9 })], "2026-08-20");
+  assert.deepEqual(Object.keys(state.stations[keyOf(stn({}))]), ["B7"]);
+});
+
+test("attachHist: badges the movers, counts them for the log, leaves steady stations alone", () => {
+  const state = fresh();
+  const moved = stn({ E10: 152.9 });
+  const steady = { ...stn({ E10: 150.9 }), name: "Steady" };
+  recordCloses(state, [{ ...moved, prices: { E10: 150.9 } }, steady], "2026-08-19");
+  recordCloses(state, [moved, steady], "2026-08-20");
+  const n = attachHist(state, [moved, steady], "2026-08-20");
+  assert.deepEqual(moved.hist, { E10: [2, 2] });
+  assert.equal(steady.hist, undefined);
+  assert.deepEqual(n, { moved: 1, up: 1, down: 0, atLow: 0 });
+});
+
+test("history state: survives a save/load round-trip; corrupt or missing files signal a rebuild", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "fuel-hist-"));
+  const path = join(dir, "state.json");
+  const state = fresh();
+  recordCloses(state, [stn({ E10: 150.9 })], "2026-08-20");
+  await saveState(path, state);
+  assert.deepEqual(await loadState(path), state);
+  assert.equal(await loadState(join(dir, "missing.json")), null);
+  await writeFile(path, "{ torn mid-writ");
+  assert.equal(await loadState(path), null);
 });

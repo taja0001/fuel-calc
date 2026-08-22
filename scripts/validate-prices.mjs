@@ -60,7 +60,7 @@ if (!Number.isFinite(generated)) {
 // Collect counts rather than one message per station, so a systemic problem reads as
 // one line instead of 8,000.
 const tally = { noName: 0, badLat: 0, badLng: 0, outsideUK: 0, noPrices: 0, oddPrice: 0,
-                unknownGrade: 0, badHours: 0, badStamp: 0 };
+                unknownGrade: 0, badHours: 0, badStamp: 0, badHist: 0 };
 const nowMinutes = Math.round(Date.now() / 60000);
 const EPOCH_FLOOR = Math.round(Date.parse("2020-01-01T00:00:00Z") / 60000);
 const stampAges = [];
@@ -106,6 +106,23 @@ for (const s of stations) {
     }
   }
 
+  // Week-of-history scalars: per grade, [delta] or [delta, over] where over is how
+  // far today's price sits above the week's low (see scripts/history.mjs). A zero
+  // delta, an "over" that puts the low outside the sane price band, or a grade the
+  // station doesn't sell would mean the Pi's state file is feeding nonsense badges.
+  if (s.hist !== undefined) {
+    if (!s.hist || typeof s.hist !== "object" || Array.isArray(s.hist)) {
+      note("badHist", `${where}: ${JSON.stringify(s.hist).slice(0, 60)}`);
+    } else for (const [g, v] of Object.entries(s.hist)) {
+      const price = s.prices?.[g];
+      const bad = !GRADES.includes(g) || !Number.isFinite(price)
+        || !Array.isArray(v) || v.length < 1 || v.length > 2 || !v.every(Number.isFinite)
+        || v[0] === 0 || Math.abs(v[0]) > PRICE.max - PRICE.min
+        || (v.length === 2 && (v[1] <= 0 || price - v[1] < PRICE.min));
+      if (bad) { note("badHist", `${where}: ${g}=${JSON.stringify(v)}`); break; }
+    }
+  }
+
   const prices = s.prices;
   if (!prices || typeof prices !== "object") { note("noPrices", where); continue; }
   let any = false;
@@ -130,6 +147,7 @@ const LABEL = {
   unknownGrade: "unrecognised fuel grades",
   badHours: "malformed opening hours",
   badStamp: "price timestamps in the future or absurdly old",
+  badHist: "malformed week-of-history scalars",
 };
 // A handful of bad records is normal in an 8,000-row government feed; a systemic
 // problem is not. Only fail past 1% of the file.
@@ -160,6 +178,17 @@ if (stampAges.length) {
               `over a month), oldest ${Math.round(Math.max(...stampAges))} days`);
 } else {
   console.log(`  price ages: no timestamps present`);
+}
+const movers = stations.filter(s => s.hist && typeof s.hist === "object");
+if (movers.length) {
+  let up = 0, down = 0, atLow = 0;
+  for (const s of movers) for (const v of Object.values(s.hist)) {
+    if (!Array.isArray(v)) continue;
+    if (v[0] > 0) up++; else down++;
+    if (v.length === 1) atLow++;
+  }
+  console.log(`  week movement: ${movers.length} stations moved ` +
+              `(${up} grade rises, ${down} falls, ${atLow} at a week low)`);
 }
 if (problems.length) {
   console.error(`\n${FILE} failed validation:`);

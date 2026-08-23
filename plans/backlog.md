@@ -4,9 +4,12 @@ Everything known-but-not-done, as of **2026-07-30**. Nothing here is urgent; the
 in a good state. Items are roughly in the order I'd tackle them, not in priority order —
 see the note at the bottom of each for what it's actually worth.
 
-Also see [price-history-plan.md](price-history-plan.md) for the price-history work, and
+Also see [price-history-plan.md](price-history-plan.md) for the price-history work,
 [monetisation.md](monetisation.md) for where this is all heading — including the SEO gap,
-which is the largest single opportunity and needs `location.city` captured to start.
+which is the largest single opportunity and needs `location.city` captured to start —
+and [security-review-2026-08-23.md](security-review-2026-08-23.md) for the outstanding
+items from the 23 Aug security review (mostly account/DNS settings only Thomas can do;
+two code findings already shipped).
 
 ---
 

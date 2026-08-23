@@ -42,9 +42,9 @@ phone taps search → navigator.sendBeacon("search,near,ok,NG1") → Cloudflare 
 | 1 | Claude | Worker code (allowlist → `writeDataPoint`) | **Done 2026-08-24** — `workers/search-counter.js`, deploy notes in its header |
 | 2 | Claude | Instrumentation in the search handler | **Done 2026-08-24** — `countSearch()` in index.html; inert until step 6 (`BEACON` is empty) |
 | 3 | Claude | Tests (fires; payload clean) | **Done 2026-08-24** — two browser tests: 📍 searches say `gps`; typed postcodes are cut to district; every beacon any test fires is swept against the four-word grammar |
-| 4 | Thomas | Dashboard → Workers & Pages → Create → paste `workers/search-counter.js` → Deploy (~5 min) | |
-| 5 | Thomas | Worker → Settings → Bindings → Analytics Engine dataset named `SEARCHES` (~2 min) | |
-| 6 | Both | Thomas pastes the `*.workers.dev` URL; Claude wires it in, one push. That push carries three things: the `BEACON` constant, the Worker's origin added to the CSP `connect-src` (without it our own CSP blocks the beacon), and the disclosure wording — a footer line ("searches are counted by area, e.g. 'NG1', never by who searched") plus the README privacy bullet. Disclosure ships with activation, not before, so it's never claiming something that isn't happening yet. | |
+| 4 | Thomas | Dashboard → Workers & Pages → Create → paste `workers/search-counter.js` → Deploy (~5 min) | **Done 2026-08-24** — `search-counter.thomas-ainsworth1.workers.dev`, no Cloudflare Access (deliberate: the endpoint must be anonymously reachable) |
+| 5 | Thomas | Worker → Settings → Bindings → Analytics Engine dataset named `SEARCHES` (~2 min) | **Done 2026-08-24** |
+| 6 | Both | Thomas pastes the `*.workers.dev` URL; Claude wires it in, one push: the `BEACON` constant, the Worker's origin in the CSP `connect-src` (without it our own CSP blocks the beacon), and the README privacy bullet. | **Done 2026-08-24.** **Footer disclosure: Thomas ruled no** (2026-08-24) — no footer line; the README bullet and this plan are the documentation. Not legally required (no personal data is processed, no cookies set); don't re-add without his say-so. |
 
 ## Reading the numbers
 

@@ -16,8 +16,10 @@ identifier, nothing that can point at a person — the search-counter plan was a
 in the open to add the fourth word, and the rule is enforced twice: browser tests
 sweep every beacon the suite fires against the four-word grammar, and the Worker
 re-checks the area's *shape* server-side, so even a buggy client can't write
-precision into the tally. Ships dark: `BEACON` is empty until the Worker URL exists
-(plan steps 4-6 — needs ~7 min of Cloudflare dashboard). This is the demand-by-town
+precision into the tally. Went live the same day: Worker deployed and bound, URL
+wired in alongside its CSP `connect-src` entry (our own policy would have silently
+blocked the beacon otherwise). Disclosure lives in the README and the plan — a
+footer line was considered and Thomas ruled it out. This is the demand-by-town
 data the SEO pages in monetisation.md are waiting on.
 
 ---

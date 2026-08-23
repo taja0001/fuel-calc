@@ -95,10 +95,10 @@ const DEST = { lat: ORIGIN.lat + 20 / 69, lng: ORIGIN.lng };   // 20 mi due nort
 let server, base, browser, page;
 
 before(async () => {
-  // Arm the search counter so the privacy tests can watch what it sends —
-  // navigator.sendBeacon is stubbed below, so nothing ever leaves the page.
+  // Point the search counter at a test host so the privacy tests can watch what it
+  // sends — navigator.sendBeacon is stubbed below, so nothing ever leaves the page.
   const html = (await readFile(new URL("../index.html", import.meta.url), "utf8"))
-    .replace('const BEACON = ""', 'const BEACON = "https://counter.test/c"');
+    .replace(/const BEACON = "[^"]*"/, 'const BEACON = "https://counter.test/c"');
   const icon = await readFile(new URL("../icon-192.png", import.meta.url));
   const manifest = await readFile(new URL("../manifest.json", import.meta.url));
   server = createServer((req, res) => {

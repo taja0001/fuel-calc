@@ -19,7 +19,7 @@
      every hand-edit of the inline script, and a stale hash blanks the entire app —
      too fragile for this repo's edit-and-push workflow. Meta-CSP cannot express
      frame-ancestors or reporting; those need real headers (a Cloudflare proxy). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'unsafe-inline'; img-src 'self'; connect-src 'self' https://api.postcodes.io https://router.project-osrm.org https://cloudflareinsights.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'unsafe-inline'; img-src 'self'; connect-src 'self' https://api.postcodes.io https://router.project-osrm.org https://cloudflareinsights.com https://search-counter.thomas-ainsworth1.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <title>Fill-Up — cheapest forecourt by true cost</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Find the cheapest place to fill up in the UK, ranked by true cost — pump price plus the fuel you'd burn driving there. Live government prices.">
@@ -803,11 +803,10 @@
   // The area is the OUTWARD half of a typed postcode ("NG1", never "NG1 5FS"), a
   // typed place name, or the literal word "gps" — nothing derived from coordinates
   // is ever sent. Four words is the whole contract (plans/search-counter.md, amended
-  // 2026-08-24), and a browser test holds the line. Empty BEACON = counting off;
-  // step 6 of the plan sets the Worker URL here AND adds its origin to the
-  // connect-src list in the CSP meta at the top of this file — without that second
-  // edit our own CSP blocks the beacon.
-  const BEACON = "";
+  // 2026-08-24), and a browser test holds the line. The Worker's origin also sits in
+  // the CSP connect-src at the top of this file — change one, change both, or our
+  // own CSP silently blocks the beacon. Empty BEACON = counting off.
+  const BEACON = "https://search-counter.thomas-ainsworth1.workers.dev/";
   function areaWord(text){
     const t = String(text || "").trim().toUpperCase();
     if (!t) return "gps";                              // no typed origin = the 📍 button

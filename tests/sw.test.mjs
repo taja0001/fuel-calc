@@ -80,6 +80,11 @@ before(async () => {
     geolocation: { latitude: ORIGIN.lat, longitude: ORIGIN.lng },
     permissions: ["geolocation"],
   });
+  // These tests run un-intercepted against the real index.html, whose BEACON is the
+  // real Worker URL — stub sendBeacon or every test run would write rows into the
+  // production search tally. (Today's only search here runs offline, but that's
+  // luck, not a guarantee.)
+  await context.addInitScript(() => { navigator.sendBeacon = () => true; });
   page = await context.newPage();
 
   // Prime: one fully-online load. /index.html deliberately — the worker must serve it

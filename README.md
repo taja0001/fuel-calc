@@ -29,6 +29,11 @@ not just the sticker price. It runs on live UK prices from the government
 - **Add to home screen** — installable web-app shortcut with its own icon, via `manifest.json` and `sw.js` on Android and the Apple meta tags on iOS.
 - **Light & dark themes**, automatic.
 - **Privacy-friendly analytics** — Cloudflare Web Analytics (no cookies, no consent banner).
+- **First-party search counter** — one four-word tally per search (mode, outcome, and an
+  area no finer than a postcode district like `NG1`, or the literal word `gps`). No IP
+  stored, no identifier, nothing that can point at a person; the payload shape is
+  enforced by browser tests and re-checked server-side. Contract and rationale:
+  [plans/search-counter.md](plans/search-counter.md).
 
 ## How it works
 

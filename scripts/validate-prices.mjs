@@ -163,6 +163,36 @@ if (withPrices < MIN_STATIONS) {
   fail(`only ${withPrices} stations have a usable price, expected at least ${MIN_STATIONS}`);
 }
 
+// --- the daily index rides along ----------------------------------------------
+// data/index.json feeds the trend chart and its table. The app escapes each row's
+// date before rendering, but validate here too: until 2026-08-23 NOTHING checked
+// this file — the workflow's path filter watched only prices.json. Absent is fine,
+// the app just hides the trend.
+const INDEX_FILE = process.argv[3] || "data/index.json";
+const indexRaw = await readFile(INDEX_FILE, "utf8").catch(() => null);
+if (indexRaw !== null) {
+  let idx = null;
+  try { idx = JSON.parse(indexRaw); } catch (e) { fail(`${INDEX_FILE} is not valid JSON: ${e.message}`); }
+  if (idx && !Array.isArray(idx.days)) fail(`${INDEX_FILE} has no "days" array`);
+  if (idx && Array.isArray(idx.days)) {
+    let badRows = 0, example = "";
+    for (const r of idx.days) {
+      const ok = r && typeof r === "object"
+        && /^\d{4}-\d{2}-\d{2}$/.test(String(r.d))          // an ISO date, nothing else
+        && [r.E10, r.B7].every(v => Number.isFinite(v) && v >= PRICE.min && v <= PRICE.max)
+        && Number.isInteger(r.n) && r.n >= 1000;            // build-index's own floor
+      if (!ok) { badRows++; if (!example) example = JSON.stringify(r).slice(0, 80); }
+    }
+    if (badRows) fail(`${INDEX_FILE}: ${badRows} malformed day rows (e.g. ${example})`);
+    for (let i = 1; i < idx.days.length; i++) {
+      if (!(idx.days[i]?.d > idx.days[i - 1]?.d)) {         // sorted + deduped, as updateIndex writes it
+        fail(`${INDEX_FILE}: day rows not strictly ascending at index ${i}`); break;
+      }
+    }
+    if (!badRows) console.log(`${INDEX_FILE}: ${idx.days.length} day rows, all well-formed`);
+  }
+}
+
 // --- report -----------------------------------------------------------------
 const h24 = stations.filter(s => s.o === 1).length;
 const timed = stations.filter(s => Array.isArray(s.o)).length;

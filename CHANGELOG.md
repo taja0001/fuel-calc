@@ -5,6 +5,34 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ---
 
+## 2026-08-23
+
+**A second line of defence against script injection.** A full security review (22
+adversarially-verified checks; 67 things examined and found solid, no way in for an
+outside attacker) confirmed the app's escaping discipline held everywhere — and that
+it was the ONLY line of defence, as the code's own comment admitted. Three changes:
+
+- **A Content-Security-Policy** now sits in the page head: even if an escaping slip
+  ever let hostile markup in, the browser refuses to load outside scripts or send
+  data anywhere except the four services the app actually uses. Verified live both
+  ways — a real search and the trend chart work untouched, and probe requests to a
+  disallowed host are refused with the policy named in the console. `'unsafe-inline'`
+  is a deliberate trade, documented in the tag's comment: a script hash would be
+  stronger but goes stale on every hand-edit and a stale hash blanks the app.
+- **The last two unescaped sinks are closed**: the trend table's date cells
+  (`esc(x.d)`) and run()'s error messages — where a malformed 2xx reply from
+  postcodes.io could bounce ~10 response bytes into the page via the browser's own
+  SyntaxError text. Mind the fix shape: `esc(e.message || fallback)`, because
+  `esc(undefined)` is the string "undefined".
+- **data/index.json is now validated in CI** — it fed the trend table yet nothing
+  checked it; the workflow's path filter watched only prices.json. Schema-checked
+  (ISO dates, prices in the sane band, station floor, strictly ascending days).
+
+The review's remaining actions are account settings, not code — branch protection,
+a fine-grained Pi PAT, the noreply commit email, domain verification.
+
+---
+
 ## 2026-08-22
 
 **Every price now carries its week.** Result rows gain a movement badge — green

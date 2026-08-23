@@ -11,11 +11,13 @@ on:
   push:
     paths:
       - "data/prices.json"
+      - "data/index.json"
       - "scripts/validate-prices.mjs"
       - ".github/workflows/validate-prices.yml"
   pull_request:
     paths:
       - "data/prices.json"
+      - "data/index.json"
       - "scripts/validate-prices.mjs"
   workflow_dispatch: {}
 

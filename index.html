@@ -12,6 +12,14 @@
   Government's Fuel Finder scheme under Open Government Licence v3.0.
 -->
 <meta charset="utf-8">
+<!-- Second line of defence behind esc(): if an escaping slip ever lets hostile markup
+     into the page, the browser still refuses to load outside scripts or send data
+     anywhere except the four services below. 'unsafe-inline' is a deliberate trade:
+     a script hash would also block injected inline handlers, but it goes stale on
+     every hand-edit of the inline script, and a stale hash blanks the entire app —
+     too fragile for this repo's edit-and-push workflow. Meta-CSP cannot express
+     frame-ancestors or reporting; those need real headers (a Cloudflare proxy). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'unsafe-inline'; img-src 'self'; connect-src 'self' https://api.postcodes.io https://router.project-osrm.org https://cloudflareinsights.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <title>Fill-Up — cheapest forecourt by true cost</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Find the cheapest place to fill up in the UK, ranked by true cost — pump price plus the fuel you'd burn driving there. Live government prices.">
@@ -998,7 +1006,10 @@
 
       render(rows, {fuel, litresFill, radius, mode:"near", found: cand.length, notes: nearNotes});
     } catch(e){
-      setMsg(e.message || "Something went wrong — try again.", true);
+      // esc() wraps the WHOLE expression: a 2xx non-JSON reply from postcodes.io
+      // throws a SyntaxError quoting response bytes, and setMsg is an innerHTML
+      // sink. The || must sit inside — esc(undefined) is the string "undefined".
+      setMsg(esc(e.message || "Something went wrong — try again."), true);
     } finally {
       searching = false;
       btn.disabled = false; btn.textContent = "Find the cheapest fill-up";
@@ -1315,7 +1326,7 @@
     });
     svg.addEventListener("pointerleave", () => show(days.length - 1));
     $("trendTable").innerHTML = "<table><tr><th>date</th><th>unleaded</th><th>diesel</th></tr>" +
-      days.map(x => `<tr><td>${x.d}</td><td>${x.E10.toFixed(1)}p</td><td>${x.B7.toFixed(1)}p</td></tr>`).join("") +
+      days.map(x => `<tr><td>${esc(x.d)}</td><td>${x.E10.toFixed(1)}p</td><td>${x.B7.toFixed(1)}p</td></tr>`).join("") +
       "</table>";
     $("trend").hidden = false;
   }

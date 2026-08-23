@@ -6,3 +6,6 @@ node_modules/
 
 # private working notes — handoffs, scratch thinking; never pushed
 notes/
+
+# Claude Code's local settings — saved permission answers, personal to this Mac
+.claude/

@@ -9,7 +9,10 @@ Also see [price-history-plan.md](price-history-plan.md) for the price-history wo
 which is the largest single opportunity and needs `location.city` captured to start —
 and [security-review-2026-08-23.md](security-review-2026-08-23.md) for the outstanding
 items from the 23 Aug security review (mostly account/DNS settings only Thomas can do;
-two code findings already shipped).
+two code findings already shipped). Newer arrivals: [domain-migration.md](domain-migration.md)
+(move domains AND get Thomas's name off the site — do before the SEO pages and ideally
+before saved postcodes) and the weekly email digest queued as Phase 2 in
+[search-counter.md](search-counter.md).
 
 ---
 

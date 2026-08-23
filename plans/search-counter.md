@@ -62,6 +62,29 @@ start without it.
 - First sight of real-world failure rate (OSRM flaking for actual users) without
   collecting anything about them.
 
+## Phase 2 — the weekly email (queued 2026-08-24, build once real data exists)
+
+Thomas wants the counts *emailed*, not fetched from a dashboard SQL box. Right
+instinct — the dashboard query is the clunkiest part of this design, and a number you
+have to go and get is a number you stop looking at.
+
+**Design:** a second tiny Worker on a Cron Trigger (weekly, Monday morning) queries
+the tally via the Analytics Engine SQL API and emails a digest:
+
+> 412 searches this week (+18% on last): Nottingham 210, Derby 61, gps 98, other 12 ·
+> journey 22% · errors 1.9%
+
+Aggregates only — the digest can't leak what the tally doesn't hold.
+
+| Needs | Who | What |
+|---|-----|------|
+| Worker + cron + SQL query + formatting | Claude | ~40 lines; token read from a Worker secret, never the repo |
+| API token (Account Analytics: Read) | Thomas | dashboard, ~2 min |
+| Sending route | Both | **Verify at build time** — Cloudflare's Worker-to-email story has shifted (MailChannels' free tier died 2024; Email Routing's `send_email` binding to a verified destination is the current candidate). Fallback that definitely works: the Pi's weekly cron runs the same query and sends via SMTP — it already wakes hourly and holds secrets fine. |
+
+**When:** after a week or two of real traffic — a digest of four test rows isn't
+worth an email. Do not build before the counter has something to say.
+
 ## Why this route
 
 GoatCounter would be quicker (one script tag) but adds a third party the ad-blockers

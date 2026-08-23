@@ -134,6 +134,12 @@ Cost ballpark: £5–10/yr for .co.uk/.uk, £10–15 for .com (Porkbun/Namecheap
 
 ### Migration checklist when bought
 
+> **Superseded 2026-08-24** by [domain-migration.md](domain-migration.md), which
+> carries the full sequence — including the new requirement that drove it (getting
+> Thomas's name off the site), the CSP/search-counter consequences that didn't exist
+> when this was written, and the user-facing costs. The candidates table above stays
+> the place to pick a name. The original checklist below is kept for the record.
+
 Repo side (small, verifiable in the browser): `CNAME` file, the licence header and OG
 tags in `index.html` that cite the old URL, README. `manifest.json` and `sw.js` are
 origin-relative and need nothing. Outside the repo: GitHub Pages custom-domain setting

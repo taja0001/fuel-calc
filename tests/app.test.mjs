@@ -95,7 +95,10 @@ const DEST = { lat: ORIGIN.lat + 20 / 69, lng: ORIGIN.lng };   // 20 mi due nort
 let server, base, browser, page;
 
 before(async () => {
-  const html = await readFile(new URL("../index.html", import.meta.url));
+  // Arm the search counter so the privacy tests can watch what it sends —
+  // navigator.sendBeacon is stubbed below, so nothing ever leaves the page.
+  const html = (await readFile(new URL("../index.html", import.meta.url), "utf8"))
+    .replace('const BEACON = ""', 'const BEACON = "https://counter.test/c"');
   const icon = await readFile(new URL("../icon-192.png", import.meta.url));
   const manifest = await readFile(new URL("../manifest.json", import.meta.url));
   server = createServer((req, res) => {
@@ -117,6 +120,10 @@ before(async () => {
     timezoneId: "Europe/London",
     geolocation: { latitude: ORIGIN.lat, longitude: ORIGIN.lng },
     permissions: ["geolocation"],
+  });
+  await context.addInitScript(() => {
+    window.__beacons = [];
+    navigator.sendBeacon = (url, body) => { window.__beacons.push(String(body)); return true; };
   });
   await context.route("**/sw.js", r => r.abort());          // see header comment
   // "ZZ9 ..." geocodes to 20 mi north; anything else to the origin — enough to plan
@@ -315,6 +322,29 @@ test("changing fuel type re-runs the search without pressing the button", async 
   const after = await page.evaluate(() => document.getElementById("bestSub").textContent);
   // cheapest open E10 is 140.0; its B7 is 152.0 — the headline must now quote a B7 price
   assert.match(after, /@ 152\.0p/, "headline reprices to the diesel figure");
+});
+
+test("the search counter: a 📍 search says gps and nothing more; no beacon ever carries precision", async () => {
+  const beacons = await page.evaluate(() => window.__beacons);
+  assert.ok(beacons.length > 0, "the counter fired for the searches so far");
+  assert.equal(beacons[0], "search,near,ok,gps");   // before()'s GPS search
+  // The whole privacy contract (plans/search-counter.md): four allowlisted words,
+  // area no finer than a district or a place name — sweep EVERY beacon any test fired.
+  for (const b of beacons){
+    assert.match(b, /^search,(near|journey),(ok|err),(gps|other|[A-Z]{1,2}\d[A-Z0-9]?|[a-z][a-z '-]{0,29})$/,
+      `beacon out of contract: ${b}`);
+    assert.doesNotMatch(b, /\d[A-Z]{2}\b/, `full postcode leaked: ${b}`);   // inward unit
+    assert.doesNotMatch(b, /\d+\.\d+/, `coordinate leaked: ${b}`);
+  }
+});
+
+test("the search counter: a typed postcode is cut to its district before it leaves", async () => {
+  await page.locator('.mode-btn[data-mode="near"]').click();
+  const prev = await page.evaluate(() => window.__beacons.length);
+  await page.locator("#postcode").fill("NG1 5FS");
+  await page.locator("#search").click();
+  await page.waitForFunction(n => window.__beacons.length > n, prev, { timeout: 15000 });
+  assert.equal(await page.evaluate(() => window.__beacons.at(-1)), "search,near,ok,NG1");
 });
 
 test("a fuel switch landing MID-search still takes effect once the search finishes", async () => {

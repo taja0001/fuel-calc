@@ -5,6 +5,23 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ---
 
+## 2026-08-24
+
+**The search counter is built — inert until its Worker deploys.** Answers "where is
+the app being used?" at the only precision that question needs: a stored row is four
+words — `search`, `near`|`journey`, `ok`|`err`, and an area no finer than a postcode
+district (`NG1`, never `NG1 5FS`), a typed place name, or the literal word `gps` for
+location-button searches (nothing derived from coordinates is ever sent). No IP, no
+identifier, nothing that can point at a person — the search-counter plan was amended
+in the open to add the fourth word, and the rule is enforced twice: browser tests
+sweep every beacon the suite fires against the four-word grammar, and the Worker
+re-checks the area's *shape* server-side, so even a buggy client can't write
+precision into the tally. Ships dark: `BEACON` is empty until the Worker URL exists
+(plan steps 4-6 — needs ~7 min of Cloudflare dashboard). This is the demand-by-town
+data the SEO pages in monetisation.md are waiting on.
+
+---
+
 ## 2026-08-23
 
 **A second line of defence against script injection.** A full security review (22

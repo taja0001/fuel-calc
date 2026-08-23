@@ -8,31 +8,43 @@ search counting needs one small piece of our own.
 ## Design
 
 ```
-phone taps search → navigator.sendBeacon("search,near,ok") → Cloudflare Worker
+phone taps search → navigator.sendBeacon("search,near,ok,NG1") → Cloudflare Worker
                   → one row in Workers Analytics Engine → SQL queries in dashboard
 ```
 
-- **Payload is three words, ever:** event (`search`), mode (`near`|`journey`), outcome
-  (`ok`|`err`). Never the postcode, GPS, radius or any identifier. A tally, not
-  telemetry — the README's privacy stance stays true because there is nothing to track.
-- **Worker (~25 lines):** validates the words against an allowlist (nobody can write
-  junk into the tally), calls `SEARCHES.writeDataPoint(...)`, stores nothing else.
+- **Payload is four words, ever** (was three; amended **2026-08-24**, Thomas's call,
+  to answer "where is the app being used?"): event (`search`), mode (`near`|`journey`),
+  outcome (`ok`|`err`), and the search **area** — the outward half of a typed postcode
+  (`NG1`, never `NG1 5FS`), a typed place name (`nottingham`), or the literal word
+  `gps` when the location button was used (nothing derived from coordinates is ever
+  sent). Never the full postcode, GPS, radius or any identifier. An outward district
+  is thousands of households, so a row still points at nowhere and no one — a tally,
+  not telemetry, and the README's privacy stance stays true because there is still
+  nothing that can identify a person. The area dimension is the demand-by-town data
+  the SEO pages in monetisation.md are waiting on.
+- **Worker (~25 lines):** validates the words against an allowlist — and the area
+  word against shape, not a list: outward-code pattern or a length-capped lowercase
+  place string; anything postcode-shaped-with-a-unit or coordinate-shaped is dropped
+  server-side, so even a future client bug can't write precision into the tally.
+  Calls `SEARCHES.writeDataPoint(...)`, stores nothing else — no IP, no user agent.
   Free tier ~100k requests/day vs our expected hundreds.
 - **sendBeacon** is fire-and-forget: never slows a search, silently dropped when
   offline or ad-blocked. Slight undercount is accepted by design.
 - **Privacy enforced by CI, not trust:** a browser test asserts the beacon fires on
-  search AND that its payload never contains the postcode or coordinates.
+  search AND that its payload never contains a full postcode, coordinates, the
+  radius, or anything beyond the four allowlisted words — the area word must match
+  the outward-code shape or the typed place name, nothing finer.
 
 ## Steps
 
-| # | Who | What |
-|---|-----|------|
-| 1 | Claude | Worker code (allowlist → `writeDataPoint`) |
-| 2 | Claude | Two-line instrumentation in the search handler |
-| 3 | Claude | Tests (fires; payload clean) + README privacy wording |
-| 4 | Thomas | Dashboard → Workers & Pages → Create → paste → Deploy (~5 min) |
-| 5 | Thomas | Worker Settings → Bindings → Analytics Engine dataset named `SEARCHES` (~2 min) |
-| 6 | Both | Thomas pastes the `*.workers.dev` URL; Claude wires it in, one push |
+| # | Who | What | State |
+|---|-----|------|-------|
+| 1 | Claude | Worker code (allowlist → `writeDataPoint`) | **Done 2026-08-24** — `workers/search-counter.js`, deploy notes in its header |
+| 2 | Claude | Instrumentation in the search handler | **Done 2026-08-24** — `countSearch()` in index.html; inert until step 6 (`BEACON` is empty) |
+| 3 | Claude | Tests (fires; payload clean) | **Done 2026-08-24** — two browser tests: 📍 searches say `gps`; typed postcodes are cut to district; every beacon any test fires is swept against the four-word grammar |
+| 4 | Thomas | Dashboard → Workers & Pages → Create → paste `workers/search-counter.js` → Deploy (~5 min) | |
+| 5 | Thomas | Worker → Settings → Bindings → Analytics Engine dataset named `SEARCHES` (~2 min) | |
+| 6 | Both | Thomas pastes the `*.workers.dev` URL; Claude wires it in, one push. That push carries three things: the `BEACON` constant, the Worker's origin added to the CSP `connect-src` (without it our own CSP blocks the beacon), and the disclosure wording — a footer line ("searches are counted by area, e.g. 'NG1', never by who searched") plus the README privacy bullet. Disclosure ships with activation, not before, so it's never claiming something that isn't happening yet. | |
 
 ## Reading the numbers
 

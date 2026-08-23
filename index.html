@@ -798,6 +798,30 @@
   });
   $("destPc").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
 
+  // --- the search counter ---------------------------------------------------------
+  // One fire-and-forget beacon per finished search: "search,<mode>,<ok|err>,<area>".
+  // The area is the OUTWARD half of a typed postcode ("NG1", never "NG1 5FS"), a
+  // typed place name, or the literal word "gps" — nothing derived from coordinates
+  // is ever sent. Four words is the whole contract (plans/search-counter.md, amended
+  // 2026-08-24), and a browser test holds the line. Empty BEACON = counting off;
+  // step 6 of the plan sets the Worker URL here AND adds its origin to the
+  // connect-src list in the CSP meta at the top of this file — without that second
+  // edit our own CSP blocks the beacon.
+  const BEACON = "";
+  function areaWord(text){
+    const t = String(text || "").trim().toUpperCase();
+    if (!t) return "gps";                              // no typed origin = the 📍 button
+    const m = /^([A-Z]{1,2}\d[A-Z0-9]?)\s*(\d[A-Z]{2})?$/.exec(t);
+    if (m) return m[1];                                // full or half postcode -> district
+    const place = t.toLowerCase().replace(/[^a-z\s'-]/g, "").trim().slice(0, 30);
+    return place || "other";
+  }
+  function countSearch(outcome){
+    if (!BEACON || !navigator.sendBeacon) return;
+    const typed = mode === "journey" ? $("startPc").value : $("postcode").value;
+    try { navigator.sendBeacon(BEACON, `search,${mode},${outcome},${areaWord(typed)}`); } catch {}
+  }
+
   $("search").addEventListener("click", run);
   $("postcode").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
 
@@ -948,6 +972,7 @@
         }
 
         render(rows, {fuel, litresFill, mode:"journey", found: usable.length, notes, trip});
+        countSearch("ok");
         return;
       }
 
@@ -1005,11 +1030,13 @@
       }).sort((a,b) => a.total - b.total);
 
       render(rows, {fuel, litresFill, radius, mode:"near", found: cand.length, notes: nearNotes});
+      countSearch("ok");
     } catch(e){
       // esc() wraps the WHOLE expression: a 2xx non-JSON reply from postcodes.io
       // throws a SyntaxError quoting response bytes, and setMsg is an innerHTML
       // sink. The || must sit inside — esc(undefined) is the string "undefined".
       setMsg(esc(e.message || "Something went wrong — try again."), true);
+      countSearch("err");
     } finally {
       searching = false;
       btn.disabled = false; btn.textContent = "Find the cheapest fill-up";

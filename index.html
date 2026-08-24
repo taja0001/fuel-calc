@@ -295,6 +295,10 @@
     <div class="where" id="bestWhere">No search yet</div>
     <div class="sub" id="bestSub">One postcode is all it needs — the car details below are already filled in.</div>
     <div class="sub save" id="bestSave"></div>
+    <!-- Which end of a journey is cheaper. Plain .sub, not .sub.save: the panel keeps
+         one green line (the trip cost), so the emphasis order the UX review settled
+         survives a second figure landing underneath it. -->
+    <div class="sub" id="bestEnds"></div>
   </div>
 
   <div class="card">
@@ -866,11 +870,18 @@
       const p = (d.result || [])[0];
       if (!p) throw new Error("Couldn't find that place — try a town name or a postcode.");
       const where = p.name_1 + (p.county_unitary || p.region ? ", " + (p.county_unitary || p.region) : "");
-      const hit = {lat: p.latitude, lng: p.longitude, label: p.name_1, approx: where};
+      const hit = {lat: p.latitude, lng: p.longitude, label: p.name_1, approx: where, town: p.name_1};
       geoCache.set(q, hit);
       return hit;
     }
+    // `town` is the district name for naming an end of a journey in plain words ("round
+    // Leeds" beats "round LS1"). It comes free — admin_district is already in the reply
+    // we fetch, and was simply being dropped. The postcodes endpoint returns a string,
+    // the outcodes one an array; a GPS start has no town at all, so every reader of this
+    // must have a wording that works without it.
+    const dist = d.result.admin_district;
     const hit = {lat: d.result.latitude, lng: d.result.longitude, label: d.result.postcode || q.toUpperCase(),
+            town: (Array.isArray(dist) ? dist[0] : dist) || null,
             ...(kind === "outcode" ? {approx: q.toUpperCase() + " (district centre)"} : {})};
     geoCache.set(q, hit);
     return hit;
@@ -1003,6 +1014,47 @@
         // (tank size x how full) gives the miles left before you'd be running on air.
         const litresNow = tank * (level/100);
         const rangeMi = (mpg > 0 && litresNow > 0) ? litresNow/LPG*mpg : Infinity;
+
+        // Which end of the trip is cheaper. Journey mode has always ranked both ends
+        // together — the destination is one of the route's own sample points, so its
+        // forecourts were already candidates — but a reader facing a dozen rows each
+        // saying "1.4 mi off route" had to recognise place names to notice that the far
+        // end was systematically cheaper. This says it.
+        //
+        // Computed from `cand`, deliberately BEFORE the range filter below. That filter
+        // drops forecourts you can't reach, which would erase the far end from the
+        // comparison in exactly the case the split-fill advice exists for — you can't
+        // make it there, so what's it worth to splash and go? Whether fuel is cheaper
+        // at the far end is a fact about the market, not about your tank.
+        //
+        // "Each end" is the first and last THIRD of the route — proportional, with no
+        // mileage cap. A cap of 20 miles was tried first and broke the case this is most
+        // useful for: leaving Ullapool there is no forecourt within 20 miles at all, so
+        // the near band came back empty and no comparison could be made on the one kind
+        // of journey where the ends genuinely differ in price. Thirds can never overlap,
+        // and a mid-route services belongs to neither. Only OPEN forecourts count:
+        // quoting a price you couldn't buy at is fiction — the rule the trip cost
+        // already follows.
+        let ends = null;
+        if (cand.length && route.miles > 1){
+          const band = route.miles / 3;
+          const nowE = new Date();
+          const open = cand.filter(r => isOpen(r.s, nowE) !== false && Number.isFinite(r.at));
+          const cheapest = list => list.length ? Math.min(...list.map(r => r.price)) : null;
+          const nearP = cheapest(open.filter(r => r.at <= band));
+          const farP  = cheapest(open.filter(r => r.at >= route.miles - band));
+          if (nearP !== null && farP !== null && nearP !== farP){
+            const gap = Math.abs(farP - nearP);
+            // Threshold in money, not pence per litre: the saving is capped by the
+            // litres you actually buy, so 6p/L is £2.33 on a fill and 30p on a splash.
+            // Shouting about 30p is how an app teaches you to stop believing it.
+            const money = gap/100 * litresFill;
+            const far = farP < nearP;
+            if (money >= 1) ends = {far, gap, money,
+              where: (far ? dest.town : (start && start.town)) || null};
+          }
+        }
+
         const notes = [];
         // Same rule as near-me: a place or half-postcode geocode is a guess about
         // where you meant, and here a silent wrong guess routes the whole journey —
@@ -1027,12 +1079,9 @@
               `With about <b>${rangeMi.toFixed(0)} miles</b> of fuel you can't reach any of these —
                showing them anyway, but fill up sooner.`});
           }
-          if (route.miles > rangeMi) notes.push({warn:true, html:
-            `The trip is <b>${route.miles.toFixed(0)} miles</b> and you've roughly
-             <b>${rangeMi.toFixed(0)}</b> in the tank — you'll need to stop on the way.`});
-          else notes.push({html:
-            `You've enough fuel for the whole <b>${route.miles.toFixed(0)} mile</b> trip —
-             this is simply where it's cheapest to top up.`});
+          // The trip-vs-range verdict is pushed further down, once the ranking exists —
+          // when the tank can't cover the trip, that note can also say how little to buy
+          // at the dear end, and it needs the far end's price to work that out.
         }
 
         // Rank on an estimate, then spend the single road-distance lookup on the best
@@ -1057,7 +1106,10 @@
           const fillCost = litresFill * r.price/100;
           const tripLitres = mpg > 0 ? detour/mpg * LPG : 0;
           const tripCost = tripLitres * r.price/100;
-          return {s:r.s, price:r.price, dist: oneWay, mins, fillCost, tripCost, total: fillCost + tripCost};
+          // `at` — miles along the route — was computed for every candidate and then
+          // dropped here, so a row could say "1.4 mi off route" but never "68 mi in".
+          return {s:r.s, price:r.price, dist: oneWay, mins, at: r.at,
+                  fillCost, tripCost, total: fillCost + tripCost};
         }).sort((a,b) => a.total - b.total);
 
         // The question behind most journey searches isn't just "where do I stop" but
@@ -1080,7 +1132,40 @@
           trip = { miles: route.miles, litres: tripLitres, cost: tripLitres * price/100 };
         }
 
-        render(rows, {fuel, litresFill, mode:"journey", found: usable.length, notes, trip});
+        // Now the trip-vs-range verdict, which needed the ranking to exist. When the
+        // tank can't cover the trip you have to stop anyway, so the question isn't
+        // whether to fill but how little to buy at the dear end — and sizing that
+        // splash is the one piece of arithmetic nothing else in the app does.
+        if (isFinite(rangeMi)){
+          if (route.miles > rangeMi){
+            let extra = "";
+            if (ends && ends.far && mpg > 0){
+              // Must stay in step with the band above: the distance to reach is where
+              // the far end was measured from, or the litres advised don't get you there.
+              const target = route.miles * 2/3;
+              const need = target / mpg * LPG * 1.05;        // 5% so an estimate isn't a plan
+              const buyHere = need - tank * (level/100);
+              const moved = litresFill - buyHere;            // litres shifted to the cheap end
+              const saved = moved * ends.gap / 100;
+              // >= 1 L, not > 0: rounded to the nearest litre, anything less advises
+              // "put roughly 0 L in here", and a number that reads as a bug costs more
+              // trust than the advice was worth.
+              if (buyHere >= 1 && moved > 0 && saved >= 1) extra =
+                ` Put roughly <b>${buyHere.toFixed(0)} L</b> in here and fill up ` +
+                (ends.where ? `round <b>${esc(ends.where)}</b>` : "at the far end") +
+                ` — about <b>${gbp(saved)}</b> better than filling right up now.`;
+            }
+            notes.push({warn:true, html:
+              `The trip is <b>${route.miles.toFixed(0)} miles</b> and you've roughly
+               <b>${rangeMi.toFixed(0)}</b> in the tank — you'll need to stop on the way.${extra}`});
+          } else {
+            notes.push({html:
+              `You've enough fuel for the whole <b>${route.miles.toFixed(0)} mile</b> trip —
+               this is simply where it's cheapest to top up.`});
+          }
+        }
+
+        render(rows, {fuel, litresFill, mode:"journey", found: usable.length, notes, trip, ends});
         countSearch("ok");
         return;
       }
@@ -1219,6 +1304,16 @@
         `This journey will cost you about ${gbp(ctx.trip.cost)} in fuel ` +
         `(${ctx.trip.miles.toFixed(0)} mi · ${ctx.trip.litres.toFixed(0)} L)`;
     }
+    // Which end of the journey is cheaper. Stated as a figure rather than as advice:
+    // the app's job is to say what's true and let the number decide it. No place name
+    // for a GPS start or an unnamed district, so the wording has to stand without one.
+    $("bestEnds").textContent = "";
+    if (ctx.mode === "journey" && ctx.ends){
+      const e = ctx.ends;
+      const place = e.where ? `Round ${e.where}` : (e.far ? "At the far end" : "Near the start");
+      $("bestEnds").textContent =
+        `${place} it's ~${e.gap.toFixed(1)}p/L cheaper — ${gbp(e.money)} on this fill`;
+    }
     if (ctx.mode === "near"){
       const open = rows.filter(r => !r.shut);
       const nearest = [...open].sort((a,b) => a.dist - b.dist)[0];
@@ -1314,8 +1409,12 @@
            <div class="delta">${i===0 ? 'cheapest' : '+'+gbp(delta)}</div>
          </div>`;
       el.querySelector(".brand").textContent = label(r.s);
+      // "68 mi in" is how a reader sees for themselves which end of the trip is cheap.
+      // The number was already computed on every journey search and thrown away here.
+      const along = (ctx.mode === "journey" && Number.isFinite(r.at))
+        ? ` · ${r.at < 1 ? "at the start" : Math.round(r.at) + " mi in"}` : "";
       el.querySelector(".meta").textContent =
-        `${r.price.toFixed(1)}p/L · ${distTime(r)}${ctx.mode==="journey"?" off route":""} · fill ${gbp(r.fillCost)} + ${tripWord} ${gbp(r.tripCost)}`;
+        `${r.price.toFixed(1)}p/L · ${distTime(r)}${ctx.mode==="journey"?" off route":""}${along} · fill ${gbp(r.fillCost)} + ${tripWord} ${gbp(r.tripCost)}`;
       el.querySelector(".dir").href =
         `https://www.google.com/maps/dir/?api=1&destination=${r.s.lat},${r.s.lng}&travelmode=driving`;
       res.appendChild(el);

@@ -5,6 +5,58 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ---
 
+## 2026-08-24 (evening)
+
+**Journey mode now says how far along the trip each forecourt sits.** Every row gains
+"68 mi in" beside "1.4 mi off route". The number was already computed on every journey
+search — each candidate carried its distance along the route — and then thrown away
+before rendering. Surfacing it is what lets a reader see for themselves that the top
+two rows are three miles from home and the next two are seventy miles along, which is
+the whole "should I fill up here or there?" question answered without the app having to
+editorialise. Verified on live data, Nottingham to Leeds.
+
+**Which end is cheaper, in the headline panel.** When the cheapest open forecourt in
+the first third of the route and the last third differ by more than £1 *on the fill you
+are actually buying*, the panel says so: "Round Leeds it's ~6.2p/L cheaper — £2.33 on
+this fill". Threshold in money rather than pence per litre, because the saving is capped
+by litres bought: 6p/L is £2.33 on a fill and 30p on a splash, and an app that shouts
+about 30p teaches you to stop believing it. It shares the panel with the trip-cost line
+rather than replacing it.
+
+The end name comes from `admin_district`, which was already in the postcodes.io reply
+and simply being discarded — so "round Leeds" rather than "round LS1", for free. A GPS
+start or an unnamed district falls back to "at the far end" / "near the start".
+
+**And it sizes the splash.** When the tank can't cover the trip, "you'll need to stop on
+the way" now continues: "Put roughly 15 L in here and fill up round Edinburgh — about
+£1.40 better than filling right up now." The comparison is deliberately computed
+*before* the range filter, because that filter drops forecourts you can't reach — which
+would erase the far end in exactly the case this advice exists for.
+
+**Honest status: the mechanism is tested, the calibration is not.** Across every real
+route tried — Nottingham→Leeds, London→Nottingham, Ullapool→Glasgow — the panel line
+correctly stayed silent, because the cheapest forecourt at each end was within about a
+penny. That looks like a real property of the market rather than a bug: the cheapest
+option almost anywhere is a supermarket, and supermarkets price nationally, so
+regional arbitrage largely vanishes at the cheap end of the market. Two band
+definitions were tried against live data: a 20-mile cap left the near band *empty*
+leaving Ullapool (no forecourt within 20 miles), and thirds-of-the-route may be wide
+enough to wash out the difference it is measuring. Thirds is what shipped, since an
+empty band is a hard failure and a washed-out one merely stays quiet.
+
+So the line is proven to render (synthetic fixture, 8p gap, £3.00) but has not been
+seen to fire on live data. **Picking the band and threshold properly needs the archive
+measured for real town-pair spreads** — the open question the concept flagged, now the
+blocking one. Until then the feature errs toward silence, which is the right way round.
+
+Two new browser tests (53 green): the ends line names the district, states the gap and
+the money, and coexists with the trip-cost line; and the splash sizing appears when the
+tank can't reach the cheap end. Both serve their own prices fixture with a forecourt at
+the destination end, leaving the shared fixture — load-bearing across both fuels —
+untouched. No service-worker version bump.
+
+---
+
 ## 2026-08-24 (later still)
 
 **Car presets — six chips for the people who don't know their mpg.** "What's your

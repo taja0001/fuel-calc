@@ -143,9 +143,14 @@ before(async () => {
           latitude: north ? DEST.lat : ORIGIN.lat, longitude: north ? DEST.lng : ORIGIN.lng,
           name_1: north ? "Northtown" : "Testville", county_unitary: "Testshire" }] }) });
     }
-    const p = url.includes("ZZ9") ? DEST : ORIGIN;
+    // admin_district is what the real endpoint returns and what the app keeps as the
+    // district name, so an end of a journey can be named in words ("round Northshire")
+    // rather than by postcode. Distinct per end so a test can tell which one was picked.
+    const north = url.includes("ZZ9");
+    const p = north ? DEST : ORIGIN;
     return r.fulfill({ contentType: "application/json",
-      body: JSON.stringify({ result: { latitude: p.lat, longitude: p.lng, postcode: "X" } }) });
+      body: JSON.stringify({ result: { latitude: p.lat, longitude: p.lng, postcode: "X",
+        admin_district: north ? "Northshire" : "Testville" } }) });
   });
   await context.route("**/router.project-osrm.org/table/**", r =>
     r.fulfill({ contentType: "application/json", body: osrmTable(r.request().url()) }));
@@ -528,6 +533,95 @@ test("car presets are fuel-adaptive, never rewrite the car, and survive a reload
 
   await p.evaluate(() => localStorage.clear());
   await p.close();
+});
+
+// --- which end of the journey is cheaper -------------------------------------------
+// These need a forecourt near the DESTINATION end of the route, which the shared
+// fixture deliberately doesn't have (every station there sits within 3 miles of the
+// origin, and the near-me radius test counts on that). So they serve their own prices
+// for the duration and unroute afterwards, leaving the shared fixture untouched — see
+// the load-bearing-fixture note in the file header.
+const FAR_STATIONS = JSON.stringify({
+  generated_at: new Date(FIXED - 30 * 60000).toISOString(),
+  count: STATIONS.length + 1,
+  stations: [...STATIONS, S("FAR END", "CheapCo", at(18.5, 0), 132.0)],
+});
+const withFarEnd = async fn => {
+  const pattern = "**/data/prices.json";
+  const serve = r => r.fulfill({ contentType: "application/json", body: FAR_STATIONS });
+  await page.context().route(pattern, serve);                 // registered last, so it wins
+  const p = await page.context().newPage();
+  await p.clock.setFixedTime(FIXED);
+  try {
+    await p.goto(base + "/index.html", { waitUntil: "load" });
+    await p.evaluate(() => localStorage.clear());
+    await p.reload({ waitUntil: "load" });
+    await fn(p);
+  } finally {
+    await p.close();
+    await page.context().unroute(pattern, serve);
+  }
+};
+const runJourney = async p => {
+  await p.locator('.mode-btn[data-mode="journey"]').click();
+  await p.evaluate(() => {
+    document.getElementById("startPc").value = "NG1 1AA";
+    document.getElementById("destPc").value = "ZZ9 9ZZ";
+  });
+  await p.locator("#search").click();
+  await p.waitForFunction(() => document.querySelectorAll("#results .station").length > 0,
+    null, { timeout: 15000 });
+};
+
+test("journey mode names which end of the trip is cheaper, and how far along each row sits", async () => {
+  await withFarEnd(async p => {
+    await runJourney(p);
+    // Cheapest OPEN in the near band is CHEAP FAR at 140.0 (NIGHT OFF is 139.0 but shut
+    // at the pinned 23:15, so it can't set the quote); the far band has FAR END at
+    // 132.0. 8.0p across the default 37.5 L fill is £3.00 — over the £1 floor.
+    const line = await p.locator("#bestEnds").textContent();
+    assert.match(line, /Round Northshire/,
+      "the cheaper end is named from admin_district, not by postcode");
+    assert.match(line, /~8\.0p\/L cheaper/);
+    assert.match(line, /£3\.00 on this fill/,
+      "the saving is stated in money, capped by the litres actually bought");
+    // The trip-cost line keeps its own slot: both are shown, neither replaces the other.
+    assert.match(await p.locator("#bestSave").textContent(), /This journey will cost you about/);
+    // Position along the route is what lets a reader see the pattern for themselves.
+    const metas = await p.evaluate(() =>
+      [...document.querySelectorAll("#results .station .meta")].map(m => m.textContent));
+    // 1[89], not an exact figure: the station sits at 18.5 mi and the route is sampled
+    // every half mile, so which side it rounds to is an implementation detail.
+    assert.ok(metas.some(m => /1[89] mi in/.test(m)), `expected a far-end row: ${metas.join(" | ")}`);
+    assert.ok(metas.some(m => /3 mi in|at the start/.test(m)), "and a near-end row");
+    assert.ok(metas.every(m => /off route/.test(m)), "off-route distance is still there");
+  });
+});
+
+test("journey mode sizes the splash when the tank can't reach the cheap end", async () => {
+  await withFarEnd(async p => {
+    // A 20-mile fixture route only outruns a 50 L tank at an implausible mpg, so this
+    // uses 10 mpg at 7.5% full: ~8 miles of range against a 15-mile-away cheap end.
+    // The figures are a lever for the branch, not a claim about real cars.
+    await p.locator('.mode-btn[data-mode="journey"]').click();
+    await p.locator("#mpg").fill("10");
+    await p.evaluate(() => {
+      const s = document.getElementById("levelSlider");
+      s.value = "7.5";
+      s.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await runJourney(p);
+    const notes = await p.evaluate(() =>
+      [...document.querySelectorAll("#results .notice")].map(n => n.textContent).join(" | "));
+    assert.match(notes, /you'll need to stop on the way/,
+      "the pre-existing range warning still fires");
+    // The advice this feature adds: buy little at the dear end, fill up at the cheap one.
+    // It can only appear because the end comparison is computed BEFORE the range filter —
+    // that filter drops the unreachable far end, which is the very case this covers.
+    assert.match(notes, /Put roughly \d+ L in here and fill up round Northshire/,
+      `expected the splash sizing: ${notes}`);
+    assert.match(notes, /better than filling right up now/);
+  });
 });
 
 test("no two preset chips share a mpg+tank pair, in either fuel", async () => {

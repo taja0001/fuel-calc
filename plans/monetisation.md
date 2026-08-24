@@ -129,6 +129,17 @@ Taken as of the check: `fillup` in every form, `truefuel`, `tankful`, `fillsmart
 **Avoid anything containing "fuelfinder"** — it's the government scheme's name, and
 trading under it invites confusion in both directions.
 
+**Third batch, 2026-08-25 — Thomas's own candidate:** `forecourtfinder` —
+**.co.uk, .uk and .com all free** (RDAP, point-in-time as ever). Honest read: plainly
+descriptive and instantly understood; town pages read naturally
+(`forecourtfinder.co.uk/petrol/nottingham`); the word "forecourt" is pleasingly
+British. Against: at 15 characters it's the longest candidate; it says "find a
+forecourt", not the true-cost maths that is the app's actual difference (same critique
+as `cheapestfill`); and "— Finder" sits nearer the government's *Fuel Finder* scheme
+name than any other candidate — it does NOT contain the forbidden string and the first
+word differs, so the July rule is satisfied, but it's the closest orbit of the lot.
+EV-proof, unlike `petrolmaths`. If chosen, buy all three and let .co.uk lead.
+
 Cost ballpark: £5–10/yr for .co.uk/.uk, £10–15 for .com (Porkbun/Namecheap both handle
 .uk; confirm Cloudflare Registrar's .uk support before assuming it).
 

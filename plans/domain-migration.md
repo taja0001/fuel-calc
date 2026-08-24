@@ -14,7 +14,9 @@ own" — the checklist there is superseded by this file). What's new is the moti
 Thomas wants the site to **stop showing his name anywhere**, which widens the job from
 "new address" to "new address plus a scrub of where the name leaks". Name choice is
 his at checkout — `fuelmaths` was the July recommendation, `whichpump.co.uk` the
-August favourite; re-check availability before buying either (RDAP checks go stale).
+August favourite, and **`forecourtfinder` is Thomas's own 2026-08-25 candidate**
+(.co.uk/.uk/.com all free that day; full read in monetisation.md §domain); re-check
+availability before buying any (RDAP checks go stale).
 
 ## What "name off the site" can and cannot mean — read before buying
 

@@ -88,11 +88,16 @@ fine-grained PAT — is the one remaining credential job and pairs with any repo
 - **First-impression polish:** the remaining quick-win UX batch (chart `touch-action`
   scroll dead-zone, GPS aria-labels, E/F gauge ends, `:focus-visible`, "1 miles") —
   small, and forum-driven phone users are precisely who hits them.
-- **A feedback channel.** Forum users will find bugs and ask for features. Currently
-  there is no way to contact the app at all — deliberate (name off the site), but a
-  launch without any channel wastes the single best thing forums produce. Needs a
-  pseudonymous answer: the forum threads themselves work at first; a alias email or a
-  form is the durable version. **Decision needed, Thomas's.**
+- **A feedback channel — DECIDED 2026-08-25:** `support@<the chosen domain>`, created
+  once the domain exists. Mechanics: **Cloudflare Email Routing** — free, the DNS zone
+  will already be on Cloudflare per the migration plan, and it forwards to the real
+  inbox without hosting a mailbox or exposing it. Two care-points: (1) set it up
+  *after* the domain purchase, and put the address in the site footer only alongside
+  the other launch changes; (2) **replying from the personal inbox exposes the real
+  address** — Email Routing is receive-only, so either configure a send-as alias
+  (e.g. via the mail provider's SMTP alias support) before answering anyone, or treat
+  it as inbound-only and answer in the forum thread instead. The forum threads
+  themselves remain the first-line channel at launch.
 - **The privacy question WILL be asked** — "what's the catch, what does it track?" is
   a reflex on MSE. The honest answer is genuinely excellent (no accounts, no ads, no
   personal data; search counter stores four words with the area cut to postcode

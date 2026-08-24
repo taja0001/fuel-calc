@@ -1,5 +1,13 @@
 # Plan: the domain move — and getting the name off the site
 
+> **This plan now gates advertising too** (2026-08-25): Thomas wants to launch on
+> local Facebook groups and MSE, and [forum-launch.md](forum-launch.md) makes this
+> migration its first hard prerequisite — forum links are permanent, and posting a
+> name-bearing URL into *local* groups deanonymises to neighbours in one click. Step 9
+> (the Worker rename) is promoted from optional to required by the same logic, with a
+> preference for moving the Worker behind the new domain as a route — that also puts
+> it in a Cloudflare zone where the free WAF rate-limiting rule can apply.
+
 Written **2026-08-24**. The domain idea dates from July (candidates, pricing, and the
 buy-before-SEO reasoning live in [monetisation.md](monetisation.md) §"A domain of its
 own" — the checklist there is superseded by this file). What's new is the motivation:
@@ -20,9 +28,14 @@ Where a visitor sees the name today:
 | Any tracked file fetched on the domain | `LICENSE` line 2, `plans/*`, `CHANGELOG.md` — Pages serves every tracked file with a 200 |
 
 **Achievable:** a casual visitor — address bar, view-source, network tab — never sees
-the name. **Not achievable:** anonymity from anyone who finds the GitHub repo. The
-repo must stay public (free Pages requires it), the LICENSE names Thomas, and 650+
-commits carry his author name; rewriting that history would destroy the price archive
+the name. **Not achievable:** anonymity from anyone who finds the GitHub repo *while it
+stays public*. ~~The repo must stay public (free Pages requires it)~~ — **no longer
+true as written** (2026-08-25): free Pages requires it only while GitHub hosts the
+site. Three costed alternatives (GitHub Pro ~£46/yr; Cloudflare Pages free with branch
+protection lapsing; a free public-site/private-archive split) are laid out in
+[forum-launch.md](forum-launch.md) §1c — decide alongside this migration, since moving
+hosting anyway is what makes the free paths available. The LICENSE names Thomas, and
+680+ commits carry his author name; rewriting that history would destroy the price archive
 — same ruling as the commit-email finding in
 [security-review-2026-08-23.md](security-review-2026-08-23.md). Whether the LICENSE
 and header keep his real name or switch to a trading name is a legal-identity call

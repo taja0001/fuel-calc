@@ -13,8 +13,11 @@ and [security-review-2026-08-23.md](security-review-2026-08-23.md) for the outst
 items from the 23 Aug security review (mostly account/DNS settings only Thomas can do;
 two code findings already shipped). Newer arrivals: [domain-migration.md](domain-migration.md)
 (move domains AND get Thomas's name off the site — do before the SEO pages and ideally
-before saved postcodes) and the weekly email digest queued as Phase 2 in
-[search-counter.md](search-counter.md).
+before saved postcodes), the weekly email digest queued as Phase 2 in
+[search-counter.md](search-counter.md), and [forum-launch.md](forum-launch.md)
+(2026-08-25: first users via Facebook groups + MSE — gated on the domain move, a repo
+visibility decision, and venue-rules homework; MSE bans self-promotion outright, so the
+route there is the forum team's blessing or an editorial pitch, never a self-post).
 
 ---
 

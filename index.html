@@ -1656,26 +1656,41 @@
     if (days.length < 7) return;                          // a line needs a shape
     days = days.slice(-28);
     const svg = $("trendSvg"), W = 320, H = 64, PAD = 6;
-    const vals = days.map(x => x.E10);
-    const lo = Math.min(...vals), hi = Math.max(...vals), span = (hi - lo) || 1;
     const X = i => PAD + i * (W - 2*PAD) / (days.length - 1);
-    const Y = v => H - PAD - (v - lo) * (H - 2*PAD) / span;
-    const pts = days.map((x, i) => `${X(i).toFixed(1)},${Y(x.E10).toFixed(1)}`).join(" ");
     const niceDate = d => new Date(d + "T12:00:00").toLocaleDateString("en-GB", {day:"numeric", month:"short"});
-    svg.innerHTML = `<line class="x" x1="0" y1="0" x2="0" y2="${H}" visibility="hidden"/>` +
-      `<polyline points="${pts}"/>` +
-      `<circle cx="${X(days.length-1)}" cy="${Y(vals[vals.length-1])}" r="3"/>`;
-    svg.setAttribute("aria-label",
-      `UK average unleaded, ${niceDate(days[0].d)} to ${niceDate(days[days.length-1].d)}: ` +
-      `${vals[0].toFixed(1)}p to ${vals[vals.length-1].toFixed(1)}p per litre. ` +
-      `Lowest ${lo.toFixed(1)}, highest ${hi.toFixed(1)}.`);
     const tip = $("trendTip");
     const show = i => {
       tip.textContent = `${niceDate(days[i].d)} · ${days[i].E10.toFixed(1)}p unleaded · ${days[i].B7.toFixed(1)}p diesel`;
       const g = svg.querySelector(".x");
       g.setAttribute("x1", X(i)); g.setAttribute("x2", X(i)); g.removeAttribute("visibility");
     };
-    show(days.length - 1);                                 // rest state: today
+    // The chart used to plot E10 for everyone — a diesel driver comparing the line to
+    // the prices on their screen saw a ~20p gap with no explanation (a 9-critic review
+    // finding). It now follows the fuel select: the index carries the two base grades,
+    // so E5 rides the unleaded series and premium diesel the diesel one — close cousins,
+    // and the caption names the series shown, not the user's exact grade. The tooltip
+    // and the data table keep BOTH series regardless; only the line and titles switch.
+    const trendGrade = () =>
+      ($("fuel").value === "B7" || $("fuel").value === "B7P")
+        ? {k: "B7", word: "diesel"} : {k: "E10", word: "unleaded"};
+    const draw = () => {
+      const {k, word} = trendGrade();
+      const vals = days.map(x => x[k]);
+      const lo = Math.min(...vals), hi = Math.max(...vals), span = (hi - lo) || 1;
+      const Y = v => H - PAD - (v - lo) * (H - 2*PAD) / span;
+      const pts = days.map((x, i) => `${X(i).toFixed(1)},${Y(x[k]).toFixed(1)}`).join(" ");
+      svg.innerHTML = `<line class="x" x1="0" y1="0" x2="0" y2="${H}" visibility="hidden"/>` +
+        `<polyline points="${pts}"/>` +
+        `<circle cx="${X(days.length-1)}" cy="${Y(vals[vals.length-1])}" r="3"/>`;
+      svg.setAttribute("aria-label",
+        `UK average ${word}, ${niceDate(days[0].d)} to ${niceDate(days[days.length-1].d)}: ` +
+        `${vals[0].toFixed(1)}p to ${vals[vals.length-1].toFixed(1)}p per litre. ` +
+        `Lowest ${lo.toFixed(1)}, highest ${hi.toFixed(1)}.`);
+      $("trendTitle").textContent = `UK average ${word} — last 4 weeks`;
+      show(days.length - 1);                               // innerHTML wiped the guide line
+    };
+    draw();
+    $("fuel").addEventListener("change", draw);
     svg.addEventListener("pointermove", e => {
       const r = svg.getBoundingClientRect();
       const i = Math.round((e.clientX - r.left) / r.width * (days.length - 1));

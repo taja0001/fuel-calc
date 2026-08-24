@@ -54,9 +54,13 @@ const STATIONS = [
   S("SUPERSTORE - PETROL FILLING STATION", "TESCO", at(2, 0.2), 142.5, { sm: 1, hist: { E10: [-1] } }),
   S("SERVICES", "Moto", at(2.5, -0.3), 152.0, { mw: 1 }),
 ];
+// B7 dips on one mid-series day ON PURPOSE: the trend chart normalises each series to
+// its own min/max, so two straight lines with the same slope render byte-identical
+// polylines — without the dip, "the chart now plots the B7 series" would be untestable
+// geometry. The endpoints (160.5 / 178.5) must not change; assertions pin them.
 const INDEX_JSON = JSON.stringify({ days: Array.from({ length: 26 }, (_, i) => ({
   d: new Date(FIXED - (25 - i) * 86400e3).toISOString().slice(0, 10),
-  E10: 158 + i * 0.1, B7: 176 + i * 0.1, n: 8000 })) });
+  E10: 158 + i * 0.1, B7: 176 + i * 0.1 - (i === 12 ? 1.5 : 0), n: 8000 })) });
 const PRICES_JSON = JSON.stringify({
   generated_at: new Date(FIXED - 30 * 60000).toISOString(),
   count: STATIONS.length, stations: STATIONS,
@@ -428,19 +432,36 @@ test("returning visitors: honest empty readout, car folded to one line, button a
   await p2.close();
 });
 
-test("the price trend renders from the daily index", async () => {
+test("the price trend renders from the daily index, and follows the selected fuel", async () => {
   await page.waitForFunction(() => !document.getElementById("trend").hidden, null, { timeout: 10000 });
-  const t = await page.evaluate(() => ({
+  // Fuel is set explicitly because earlier tests leave the select on B7 — the chart
+  // following the select is the behaviour under test, so the start state can't be luck.
+  await page.selectOption("#fuel", "E10");
+  const grab = () => page.evaluate(() => ({
     label: document.getElementById("trendSvg").getAttribute("aria-label"),
-    points: document.querySelector("#trendSvg polyline").getAttribute("points").split(" ").length,
+    title: document.getElementById("trendTitle").textContent,
+    points: document.querySelector("#trendSvg polyline").getAttribute("points"),
     tip: document.getElementById("trendTip").textContent,
     tableRows: document.querySelectorAll("#trendTable tr").length,
   }));
+  const t = await grab();
   assert.match(t.label, /UK average unleaded/);
-  assert.match(t.label, /160\.5p per litre/, "ends at the fixture's last value");
-  assert.equal(t.points, 26, "one point per fixture day");
+  assert.match(t.title, /UK average unleaded/);
+  assert.match(t.label, /160\.5p per litre/, "ends at the fixture's last E10 value");
+  assert.equal(t.points.split(" ").length, 26, "one point per fixture day");
   assert.match(t.tip, /160\.5p unleaded/, "rest state shows the latest day");
   assert.equal(t.tableRows, 27, "table view: header + 26 days");
+
+  // A diesel driver gets the diesel series, not a ~20p-off unleaded line (9-critic
+  // review finding). The fixture's B7 runs 176.0->178.5, distinct from E10's 158->160.5.
+  await page.selectOption("#fuel", "B7");
+  const d = await grab();
+  assert.match(d.label, /UK average diesel/);
+  assert.match(d.title, /UK average diesel/);
+  assert.match(d.label, /178\.5p per litre/, "ends at the fixture's last B7 value");
+  assert.notEqual(d.points, t.points, "the plotted line actually moved to the B7 series");
+  assert.match(d.tip, /178\.5p diesel/, "tooltip still carries both series");
+  assert.match(d.tip, /160\.5p unleaded/, "tooltip still carries both series");
 });
 
 test("a failed refresh keeps the real stations instead of swapping in sample data", async () => {

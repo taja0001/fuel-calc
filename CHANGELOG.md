@@ -5,6 +5,26 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ---
 
+## 2026-08-25
+
+**The trend chart follows your fuel.** It plotted the E10 national average for
+everyone — a diesel driver comparing the line to the prices on their own screen saw a
+~20p gap with no explanation (a nine-critic review finding; on the day this shipped the
+two series sat at 161.5p vs 183.0p). The chart now plots the series for the selected
+fuel, re-titles itself ("UK average diesel — last 4 weeks"), redraws on every fuel
+change, and honours the remembered car's fuel on load. E5 rides the unleaded series and
+premium diesel the diesel one — the index carries the two base grades, and the caption
+names the series shown. The tooltip and the expandable table keep both series
+regardless; only the line and titles switch. `data/index.json` had carried the diesel
+series unused since it was built.
+
+Test note for future fixture edits: the fixture's B7 series now dips on one mid-series
+day *on purpose*. The chart normalises each series to its own min/max, so two straight
+lines with the same slope render byte-identical polylines — without the dip, "the line
+actually moved to the B7 series" is untestable geometry. (53 tests green.)
+
+---
+
 ## 2026-08-24 (evening)
 
 **Journey mode now says how far along the trip each forecourt sits.** Every row gains

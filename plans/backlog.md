@@ -1,8 +1,10 @@
 # Backlog
 
-Everything known-but-not-done, as of **2026-07-30**. Nothing here is urgent; the app is
-in a good state. Items are roughly in the order I'd tackle them, not in priority order —
-see the note at the bottom of each for what it's actually worth.
+Everything known-but-not-done, as of **2026-07-30**; **audited against the code
+2026-08-24** — items found shipped are marked ✅ in place rather than deleted, so the
+original reasoning stays readable. Nothing here is urgent; the app is in a good state.
+Items are roughly in the order I'd tackle them, not in priority order — see the note at
+the bottom of each for what it's actually worth.
 
 Also see [price-history-plan.md](price-history-plan.md) for the price-history work,
 [monetisation.md](monetisation.md) for where this is all heading — including the SEO gap,
@@ -64,22 +66,17 @@ car is. Tap and search.
 
 *Small. Probably the biggest everyday improvement per line of code on this list.*
 
-## 2. Trip fuel total
+## 2. Trip fuel total — ✅ DONE (and then some)
 
-Journey mode already computes the route length (`route.miles`) and already knows your
-mpg. So it can say what the **journey** costs, not just the fill-up:
+Shipped exactly as proposed: journey mode's headline panel says *"This journey will
+cost you about £19.54 in fuel (125 mi · 12 L)"*, priced at the cheapest OPEN forecourt
+en route. It first shipped into the notice pile, went unseen, and was moved into the
+headline panel — the code comment at the render site records the episode.
 
-> This 280 mile trip needs about **28 litres** — roughly **£44** at the best price on
-> your route.
-
-Today it reports `37.5 L @ 150.9p · fill £56.59 + detour £0.14`, which answers "what
-will this fill-up cost" rather than "what will this journey cost". The second is usually
-the question. It also pairs with the range warning: if you're told you need to stop,
-knowing the trip burns 28 L tells you whether one stop is enough.
-
-No new data, no new requests. Pure arithmetic on values already in memory.
-
-*Smallest item here.*
+The "pairs with the range warning" half grew beyond the proposal (24 Aug): when the
+tank can't cover the trip, the warning now sizes the stop — *"Put roughly 15 L in here
+and fill up round Glasgow — about £1.40 better than filling right up now"* — using the
+journey-ends comparison calibrated against the archive (`scripts/spread.mjs`).
 
 ## 3. Shareable search URLs
 
@@ -110,31 +107,22 @@ the better deal if it were open". But it reads oddly at a glance.
 Options: leave it, hide the delta on closed rows, or grey it. **My inclination is to
 leave it** — the Closed badge already explains the ordering. Thomas hasn't ruled.
 
-## 5. Search counter — see [search-counter.md](search-counter.md)
+## 5. Search counter — ✅ DONE, live since 24 Aug
 
-Cloudflare's beacon counts visitors but not actions; a ~25-line Worker plus a
-three-word `sendBeacon` ping counts searches (mode, ok/err — never the postcode,
-enforced by a CI test). Gives the searches-per-visitor ratio the monetisation
-question turns on, and doubles as the rehearsal for the plate-lookup Worker.
-Claude's half is ready to build; needs Thomas for two dashboard steps (~10 min).
+Worker deployed (`workers/search-counter.js`), four words per search (mode, outcome,
+area at district precision max), privacy enforced structurally — client cuts, server
+re-checks the shape, browser tests sweep every beacon. Grew a fourth word (area) over
+the original three, Thomas's call, made in the open in [search-counter.md](search-counter.md).
+Phase 2 (weekly digest) waits on ~a week of real traffic: **~31 Aug earliest**.
 
-*Small-moderate. The most useful next piece of infrastructure.*
+## 6. Amend the price-history plan — ✅ OVERTAKEN by shipping the thing
 
-## 6. Amend the price-history plan
-
-[price-history-plan.md](price-history-plan.md) is **partly obsolete** and actively
-misleading. It assumed change times had to be inferred by diffing hourly snapshots,
-which is why sampling gaps were fatal, hour-of-day analysis was impossible, and the
-revisit date was September.
-
-Then `pu` landed (commit `0d844e0`) — the feed gives the exact minute each price moved.
-Gaps stop mattering, hour-of-day becomes answerable now, and September was pessimistic.
-
-The archive is already improving: every commit from the Pi's 19:19 run on 2026-07-30
-onward carries real change timestamps.
-
-*Documentation only, but cheap and it stops a trap being laid for future-you. A
-superseded notice is already at the top of that file.*
+The rewrite never happened and no longer needs to: the plan's build order (§8) is
+**complete** — the trend chart and the per-station movement badges shipped 22 Aug
+(`scripts/history.mjs`, `hist` in prices.json). The superseded notice plus the
+"§8 complete" update at the top of [price-history-plan.md](price-history-plan.md)
+defuse the trap this item existed to defuse. Still genuinely open from that plan:
+only §7, the offline falling-market analysis, which waits on a falling market.
 
 ---
 
@@ -142,18 +130,19 @@ superseded notice is already at the top of that file.*
 
 Recorded 2026-07-31 alongside building the CI tests:
 
-1. **Commit the Pi's scripts.** `update-fuel-prices.sh` and `net-watchdog.sh` exist only
-   on the SD card — the component most likely to die. The README describes them but
-   doesn't contain them. Paste sanitised copies into a `pi/` directory (secrets stay in
-   `secrets.env`, recoverable from the GOV.UK portal) and an SD death becomes copy-paste
-   instead of reconstruction from prose.
-2. **Branch-protect `main`.** The git history IS the price archive — irreplaceable at
-   any price and growing hourly. Settings → Branches → block force pushes and deletions.
-   Two clicks; given three divergence incidents on 2026-07-30, not theoretical.
+1. **Commit the Pi's scripts — half done.** `pi/update-fuel-prices.sh` is committed
+   (with a README recording the runner contract and, since 24 Aug, where the push
+   credential lives). **`net-watchdog.sh` is still only on the SD card** — the surviving
+   half of this item. Paste a sanitised copy into `pi/`.
+2. ~~**Branch-protect `main`.**~~ ✅ **DONE 24 Aug** — force pushes and deletions
+   blocked, admins included, verified by watching a force-push and a delete get
+   rejected on a throwaway branch. Details in
+   [security-review-2026-08-23.md](security-review-2026-08-23.md) §1; its §2 (scope the
+   Pi's PAT down) is what keeps this held.
 3. **Fire the healthchecks.io test notification.** The ping works, but no alert email
    has ever actually been sent (the one real outage recovered inside the grace window).
    Until the "Send test notification" button is pressed, the dead-man's switch is a
-   switch nobody has heard ring.
+   switch nobody has heard ring. **Still open, still ~1 minute of Thomas's time.**
 
 ## Deliberately rejected — don't re-propose without new information
 

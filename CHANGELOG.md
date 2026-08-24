@@ -33,21 +33,39 @@ the way" now continues: "Put roughly 15 L in here and fill up round Edinburgh �
 *before* the range filter, because that filter drops forecourts you can't reach — which
 would erase the far end in exactly the case this advice exists for.
 
-**Honest status: the mechanism is tested, the calibration is not.** Across every real
-route tried — Nottingham→Leeds, London→Nottingham, Ullapool→Glasgow — the panel line
-correctly stayed silent, because the cheapest forecourt at each end was within about a
-penny. That looks like a real property of the market rather than a bug: the cheapest
-option almost anywhere is a supermarket, and supermarkets price nationally, so
-regional arbitrage largely vanishes at the cheap end of the market. Two band
-definitions were tried against live data: a 20-mile cap left the near band *empty*
-leaving Ullapool (no forecourt within 20 miles), and thirds-of-the-route may be wide
-enough to wash out the difference it is measuring. Thirds is what shipped, since an
-empty band is a hard failure and a washed-out one merely stays quiet.
+**The band comes from measuring the archive, and it corrected a wrong conclusion.**
+The first three live routes tried — Nottingham→Leeds, London→Nottingham,
+Ullapool→Glasgow — all stayed silent, and the tentative read was that Britain simply
+has no regional spread worth reporting, because the cheapest option almost anywhere is
+a supermarket and supermarkets price nationally. **That was wrong, and wrong because
+three city-to-city routes are a biased sample.** `scripts/spread.mjs` put the question
+to a month of hourly national prices over 20,000 sampled journey pairs:
 
-So the line is proven to render (synthetic fixture, 8p gap, £3.00) but has not been
-seen to fire on live data. **Picking the band and threshold properly needs the archive
-measured for real town-pair spreads** — the open question the concept flagged, now the
-blocking one. Until then the feature errs toward silence, which is the right way round.
+- **The spread is real.** Between two places 30–300 miles apart the median gap between
+  their cheapest forecourts is **4.0p/L**, and **66% of pairs exceed £1** on a 37.5 L
+  fill, 35% exceed £2. The £1 floor is well placed — and since real journeys are more
+  city-biased than a grid sample, the true rate of the line firing is lower than 66%.
+- **Remoteness is the mechanism.** Median cheapest price is 153.7p where a forecourt
+  sits within 2 miles, rising monotonically to 158.9p where the nearest is 10–20 miles
+  away. The gap is a rural premium, which is exactly why two supermarket-rich cities
+  show nothing — correctly.
+- **A 20-mile band was the bug.** 24% of Britain has no forecourt inside it, which is
+  precisely why leaving Ullapool produced no comparison. At 40 miles that falls to 9%.
+- **Too wide washes it out.** Median gap is 4.0p at bands up to 20 miles, 3.2p at 40,
+  3.0p at 60 — and uncapped thirds would make "the far end" of a 300-mile trip a third
+  of the country. Hence `min(route/3, 40)`.
+- **It's stable enough to act on.** Of pairs with a £1+ gap today, **95% still point
+  the same way a week later**, 90% after two weeks, 87% after three. A gap that flipped
+  week to week would have made the advice worse than silence.
+
+With that band the line fires on live data as the archive predicts: *"Round Glasgow
+it's ~3.2p/L cheaper — £1.20 on this fill"* leaving Ullapool, *"Round Birmingham it's
+~6.3p/L cheaper — £2.36 on this fill"* leaving Aberystwyth, and still nothing between
+Nottingham and Leeds, where there is genuinely nothing to say.
+
+`scripts/spread.mjs` is kept, and is offline analysis rather than pipeline — nothing
+runs it automatically. It exists so the two magic numbers in the band have a
+reproducible derivation instead of a plausible-sounding comment.
 
 Two new browser tests (53 green): the ends line names the district, states the gap and
 the money, and coexists with the trip-cost line; and the splash sizing appears when the

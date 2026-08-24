@@ -51,18 +51,82 @@ The original reasoning, kept because it explains the *shape* of the rule:
 can call the repo-admin API and delete this rule before force-pushing, so until the
 Pi's token is scoped down, the protection is only as strong as that token.
 
-### 2. Scope the Pi's PAT down to Contents-only — pairs with #1
+### 2. Scope the Pi's PAT down to Contents-only — ⬅ NOW THE TOP ITEM
 
-A classic (broad-scope) PAT can call the repo-admin API and simply delete branch
-protection before force-pushing, which would silently defeat #1. A fine-grained PAT
-scoped to `Contents: write` on this one repo, with an expiry, cannot.
+Promoted 24 Aug, because #1 is done and *this* is what keeps #1 standing. Branch
+protection is enforced by GitHub but can be **removed** by anything with repo-admin
+rights: a classic (broad-scope) PAT can call
+`DELETE /repos/taja0001/fuel-calc/branches/main/protection`, force-push a rewritten
+history, and put the rule back. So the archive's protection is currently only as
+strong as the weakest admin-capable token pointing at this repo. A fine-grained PAT
+scoped to `Contents: Read and write` on this one repo cannot make that call — the
+permission simply isn't in its grant.
 
-**Do:** on GitHub, create a fine-grained PAT scoped to `taja0001/fuel-calc` only,
-permission `Contents: Read and write`, nothing else, with an expiry date. Swap it
-into `~/fuel/secrets.env` on the Pi. Confirm the next hourly run pushes fine, then
-revoke the old token. *pi/README.md already notes an expired PAT once left the
-site stale for days — the healthchecks.io dead-man's switch is the safety net for
-this exact failure mode, so an expiring token is not a silent risk.*
+#### ⚠️ Read this before starting: the old instruction here was wrong
+
+This section used to say "swap it into `~/fuel/secrets.env`". That looks incorrect.
+The live runner ([`pi/update-fuel-prices.sh`](../pi/update-fuel-prices.sh)) sources
+`secrets.env` and then runs a **bare `git pull` / `git push`** with no token variable
+anywhere, and `secrets.env` is documented in the main README as holding only
+`FF_CLIENT_ID`, `FF_CLIENT_SECRET`, `FF_PING_URL` and optionally `FF_STATE`. Nothing
+in this repo records where the Pi's *git* credential actually lives. Edit
+`secrets.env`, revoke the old token, and the swap will have done nothing while the
+hourly push starts failing.
+
+**So step 1 is discovery, on the Pi:**
+
+```sh
+cd ~/fuel/fuel-calc
+git remote -v                              # token baked into the URL?
+git config --get-all credential.helper     # repo-level helper?
+git config --global --get-all credential.helper
+ls -la ~/.git-credentials 2>/dev/null      # helper 'store' writes here
+```
+
+Which mechanism it turns out to be decides the swap:
+
+| What you find | The swap |
+|---|---|
+| Token in the remote URL | `git remote set-url origin https://<NEW>@github.com/taja0001/fuel-calc.git` |
+| `credential.helper store` + `~/.git-credentials` | replace the token in that file's line |
+| `git@github.com:...` (SSH) | **there is no git PAT** — see below |
+
+If it's SSH, this item largely dissolves: an SSH key can force-push but **cannot**
+call the admin API, so #1 already holds against it. The residual risk is then only
+whatever other broad-scope tokens exist on the account (mine included — the `gh` CLI
+token on the Mac carries classic `repo` scope and *can* delete the rule).
+
+**When you know the mechanism, update this section and `pi/README.md`** — the Pi's
+push credential being undocumented is its own small finding.
+
+#### The GitHub side
+
+Settings → Developer settings → Personal access tokens → **Fine-grained tokens** →
+Generate new token. Resource owner `taja0001`; repository access "Only select
+repositories" → `taja0001/fuel-calc`; Repository permissions → **Contents: Read and
+write**, nothing else; set an expiry. GitHub adds `Metadata: Read` automatically —
+mandatory and harmless.
+
+`Contents` covers both halves of what the runner does: read for `git pull`, write for
+`git push`. It does **not** cover `.github/workflows/` — irrelevant today because the
+runner only stages `data/`, but a future Pi push touching a workflow file would need
+`Workflows: write` and would otherwise be rejected.
+
+#### Verify before revoking
+
+Do not revoke the old token until a real run has succeeded — either wait for the top
+of the hour or run `~/fuel/update-fuel-prices.sh` by hand and check it logs
+"prices updated and pushed."
+
+*The dead-man's switch genuinely covers this failure mode (verified 24 Aug by reading
+the script, not assuming): the heartbeat ping sits after the push inside `run_once()`,
+and a failed push hits `return 1` and skips the ping entirely. So a broken or expired
+token surfaces as a healthchecks.io alert, not a silently stale site — the exact
+failure `pi/README.md` records from last time. An expiring token is not a silent risk.*
+
+**Bundle with #3:** its step 2 is also a one-liner on the Pi
+(`git config user.email "152604317+taja0001@users.noreply.github.com"`), so do both in
+the same SSH session — but respect #3's ordering, Mac first, then Pi.
 
 ### 3. Stop leaking the real email in commits
 

@@ -128,21 +128,43 @@ failure `pi/README.md` records from last time. An expiring token is not a silent
 (`git config user.email "152604317+taja0001@users.noreply.github.com"`), so do both in
 the same SSH session — but respect #3's ordering, Mac first, then Pi.
 
-### 3. Stop leaking the real email in commits
+### 3. Stop leaking the real email in commits — step 1 of 3 DONE 24 Aug
 
-Both the Mac's global git config and the Pi's leak `thomas.ainsworth1@outlook.com`
-into every commit — 653 so far, growing hourly — even though the GitHub account
-itself uses the noreply address (38 commits already do). Ties the pseudonymous
-`taja0001` identity to a real personal address, harvestable via the public API with
-zero preconditions.
+Both the Mac's global git config and the Pi's leaked `thomas.ainsworth1@outlook.com`
+into every commit, even though the GitHub account itself uses the noreply address
+(38 commits already do — those are web-UI commits, committer `noreply@github.com`).
+Ties the pseudonymous `taja0001` identity to a real personal address, harvestable via
+the public API with zero preconditions.
 
-**Do, in this order** (order matters — reversed, the Pi's push starts failing):
-1. On the Mac: `git config --global user.email "152604317+taja0001@users.noreply.github.com"`
-2. On the Pi, in `~/fuel/fuel-calc`: `git config user.email "152604317+taja0001@users.noreply.github.com"`
-3. *Only after both are done*, optionally enable GitHub's "Block command line
+**The count was 653 at review time; re-measured 24 Aug it is 684** — the review's
+"growing hourly" was literal, ~31 commits in a day. Every hour the Pi stays unfixed
+adds one.
+
+**Do, in this order** (order matters — see why below):
+
+1. ✅ **DONE 24 Aug — Mac:** `git config --global user.email "152604317+taja0001@users.noreply.github.com"`
+   Verified by building a real commit object: author *and* committer both come out as
+   the noreply address. Checked first that no repo on this Mac has a local
+   `user.email` override that would silently defeat a global-only fix — neither
+   `fuel-calc` nor `tui-price-tracker` does, and both are `taja0001` remotes, so
+   global was the right scope. **Caveat for later:** a *work* repo cloned onto this
+   Mac would now inherit the pseudonymous noreply. Set a per-repo
+   `git config user.email` in any work clone.
+2. ⬜ **Pi, still open** — in `~/fuel/fuel-calc`:
+   `git config user.email "152604317+taja0001@users.noreply.github.com"`
+   Consider `--global` on the Pi instead: strictly safer, since a re-clone after an
+   SD-card rebuild would otherwise silently go back to leaking. Only affects future
+   commits, so nothing to clean up. Bundle this with item #2's SSH session.
+3. ⬜ *Only after both are done*, optionally enable GitHub's "Block command line
    pushes that expose my email" (Settings → Emails).
 
-**Do not** rewrite history to scrub the old 653 — every commit SHA changes, and
+**Why the order matters:** step 3 makes GitHub *reject* any push containing commits
+that expose the real address. Enable it while the Pi is still committing as
+`@outlook.com` and the Pi's hourly push starts getting rejected — the site goes stale
+until someone notices. (The healthchecks.io dead-man's switch would catch it, since
+the ping sits after the push, but there's no reason to fire it deliberately.)
+
+**Do not** rewrite history to scrub the old 684 — every commit SHA changes, and
 main's history *is* the price archive. Those are sunk; this just stops new ones.
 
 ### 4. Verify the domain on the GitHub account

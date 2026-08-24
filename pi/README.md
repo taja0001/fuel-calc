@@ -45,6 +45,31 @@ Until 2026-08-19 the fetcher (`scripts/build-prices.mjs`) sent this ping itself,
 before the runner had committed or pushed anything. It no longer pings at all — if
 the alert fires after updating the repo on the Pi, the runner is missing step 5.
 
+## How the Pi authenticates to GitHub (recorded 2026-08-24)
+
+This was undocumented until a security review went looking for it, and the wrong
+guess (that the PAT lives in `secrets.env`) would have broken the hourly push. The
+runner deliberately has no token in it — `git push` gets the credential from git:
+
+```
+origin  https://github.com/taja0001/fuel-calc.git   # HTTPS, no token in the URL
+credential.helper = store                            # in the Pi's GLOBAL git config
+~/.git-credentials                                   # mode 0600, one line, cleartext
+```
+
+`git credential-store` keeps the PAT as `https://USERNAME:TOKEN@github.com`. Keeping
+it out of the remote URL is deliberate: `git remote -v`, logs and screenshots stay
+clean. The trade-off is that the file is **plaintext**, so its 0600 mode and the SD
+card are the only things protecting it — which is why the token should be a
+fine-grained `Contents: Read and write` PAT scoped to this one repo and nothing more.
+A broad-scope PAT read off that card could delete branch protection and rewrite the
+price archive; a Contents-only one can only push prices.
+
+To inspect the file without exposing the token:
+`sed 's/:[^:@]*@/:***@/' ~/.git-credentials`. To rotate it, replace the token in that
+line, then confirm a real run pushes **before** revoking the old token — a bad
+credential fails silently every hour except for the missing healthchecks.io ping.
+
 ## The history state file (nothing to do — recorded so it isn't a mystery)
 
 Since 2026-08-22 the fetcher also maintains `~/fuel/history-state.json`: the last

@@ -62,42 +62,62 @@ strong as the weakest admin-capable token pointing at this repo. A fine-grained 
 scoped to `Contents: Read and write` on this one repo cannot make that call — the
 permission simply isn't in its grant.
 
-#### ⚠️ Read this before starting: the old instruction here was wrong
+#### Where the Pi's push credential actually lives — ANSWERED 24 Aug
 
-This section used to say "swap it into `~/fuel/secrets.env`". That looks incorrect.
-The live runner ([`pi/update-fuel-prices.sh`](../pi/update-fuel-prices.sh)) sources
-`secrets.env` and then runs a **bare `git pull` / `git push`** with no token variable
-anywhere, and `secrets.env` is documented in the main README as holding only
-`FF_CLIENT_ID`, `FF_CLIENT_SECRET`, `FF_PING_URL` and optionally `FF_STATE`. Nothing
-in this repo records where the Pi's *git* credential actually lives. Edit
-`secrets.env`, revoke the old token, and the swap will have done nothing while the
-hourly push starts failing.
+This section used to say "swap it into `~/fuel/secrets.env`". **That was wrong.** The
+runner ([`pi/update-fuel-prices.sh`](../pi/update-fuel-prices.sh)) sources
+`secrets.env` and then runs a bare `git pull` / `git push` with no token variable
+anywhere; `secrets.env` holds only `FF_CLIENT_ID`, `FF_CLIENT_SECRET`, `FF_PING_URL`
+and optionally `FF_STATE`. Editing it would have changed nothing while the hourly
+push started failing.
 
-**So step 1 is discovery, on the Pi:**
+Measured on the Pi (`fuelpi`, user `whufc12`):
 
-```sh
-cd ~/fuel/fuel-calc
-git remote -v                              # token baked into the URL?
-git config --get-all credential.helper     # repo-level helper?
-git config --global --get-all credential.helper
-ls -la ~/.git-credentials 2>/dev/null      # helper 'store' writes here
+```
+origin  https://github.com/taja0001/fuel-calc.git (fetch/push)   ← no token in the URL
+credential.helper = store                                        ← set in GLOBAL config
+-rw------- 1 whufc12 whufc12 122  ~/.git-credentials             ← mode 0600, one line
 ```
 
-Which mechanism it turns out to be decides the swap:
+So the credential is **`git credential-store` keeping the PAT in cleartext at
+`/home/whufc12/.git-credentials`**, in the usual
+`https://USERNAME:TOKEN@github.com` form. Two consequences worth naming:
 
-| What you find | The swap |
-|---|---|
-| Token in the remote URL | `git remote set-url origin https://<NEW>@github.com/taja0001/fuel-calc.git` |
-| `credential.helper store` + `~/.git-credentials` | replace the token in that file's line |
-| `git@github.com:...` (SSH) | **there is no git PAT** — see below |
+- The token is *not* in the remote URL, which is good — it can't leak through
+  `git remote -v`, a screenshot, or a log line.
+- But `store` is **plaintext by design**. Mode 0600 limits it to the `whufc12` user,
+  so the real exposure is anyone with a shell as that user, or the SD card itself.
+  That is precisely why the token's *scope* is what matters here: a classic
+  broad-scope PAT read off that card can delete branch protection and rewrite the
+  archive; a `Contents`-only fine-grained token can only push prices.
 
-If it's SSH, this item largely dissolves: an SSH key can force-push but **cannot**
-call the admin API, so #1 already holds against it. The residual risk is then only
-whatever other broad-scope tokens exist on the account (mine included — the `gh` CLI
-token on the Mac carries classic `repo` scope and *can* delete the rule).
+**Never `cat` this file into a terminal you might screenshot or paste.** To inspect
+its structure with the secret masked:
 
-**When you know the mechanism, update this section and `pi/README.md`** — the Pi's
-push credential being undocumented is its own small finding.
+```sh
+sed 's/:[^:@]*@/:***@/' ~/.git-credentials
+```
+
+#### The swap, for this mechanism
+
+1. Create the fine-grained PAT first (next subsection) — don't revoke anything yet.
+2. Check how many lines the file has, so you don't clobber an unrelated host:
+   `wc -l ~/.git-credentials` (122 bytes ≈ one line, but confirm).
+3. Rewrite it. `printf` rather than an editor keeps the token out of shell history
+   *only if* your shell is configured to ignore space-prefixed commands — otherwise
+   use `nano` and edit the token in place:
+   ```sh
+   printf 'https://taja0001:%s@github.com\n' 'NEW_TOKEN_HERE' > ~/.git-credentials
+   chmod 600 ~/.git-credentials
+   ```
+4. Prove it works **before revoking**: `cd ~/fuel/fuel-calc && git fetch` tests read;
+   a real `~/fuel/update-fuel-prices.sh` run tests the push. Wait for "prices updated
+   and pushed."
+5. Only then revoke the old token on GitHub.
+
+If the new token is wrong, `store` will keep handing git the same bad credential and
+the push fails every hour — the healthchecks.io heartbeat is what tells you, since it
+only fires after a successful push.
 
 #### The GitHub side
 

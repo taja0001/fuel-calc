@@ -5,6 +5,51 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ---
 
+## 2026-08-24 (later)
+
+**The four consensus wins from the nine-critic UX review.** Nine independent
+reviewers (three lenses × three personas) critiqued the live app; these are the
+findings five or more hit independently, shipped together:
+
+**The verdict carries the doubt.** The headline panel used to crown a winner its own
+row disputed below the fold. Now it names the fuel ("37.5 L of unleaded" — diesel
+drivers were re-checking the dropdown before believing any number), wears the same
+dashed stale-price caveat as its row, and — when a stale winner leads a fresh-priced
+runner-up by less than plausible drift (~1p/L per week of staleness on the litres
+bought) — says so in one plain sentence: "Tesco (2nd, £0.04 more) was priced this
+week — it may really be the cheaper one." The app already knew all three facts; the
+headline just never asked.
+
+**Dashes, not a fabricated reading.** The empty and no-results states showed a
+glowing £0.00 — a made-up number in the flagship slot of an app whose whole pitch is
+honest numbers. Now: dim £--.-- in the pump-display idiom, using the `--readout-dim`
+token that had been defined in all four theme blocks since July and never used once.
+
+**The action above the fold.** The search button first painted at 1007px on an
+844px phone. Two compatible fixes: it now sits directly under "Where to?" (the car
+card is optional reading — defaults and localStorage do the work), and a remembered
+car folds to one line ("45 mpg · 50 L · Diesel (B7) — Change"), controls hidden but
+alive so every listener still works. Cold open now fits one screen (button at
+684px). Plus `enterkeyhint="search"` so the phone keyboard advertises the Enter
+shortcut that always existed. Shipped one real bug along the way and caught it in
+verification: `display:flex` on the summary bar silently beat the `hidden`
+attribute, showing first-time visitors an empty bar — pinned by a test now.
+
+**Rows that rank, not shout.** Feed names arrive as ALL-CAPS plumbing; now
+fully-uppercase names are title-cased (apostrophe-safe — the Esson'S rule; tokens
+≤3 letters stay verbatim for BP/EG/MFG; -on-Sea survives) and generic suffixes are
+stripped ("PETROL FILLING STATION" carries nothing in a list made of petrol filling
+stations). The delta — the number that actually decides — is promoted to bold ink
+while non-winner totals step down a notch; ranks and prices align to the top of
+each card; movement badges read in words ("▼ down 1p since Thu") with "week low"
+as its own pill, so no capsule can wrap; and the Best value pill's ink darkened to
+clear WCAG AA (the old green measured 3.84:1 — a new find beyond the watch-list).
+
+48 tests green (three new: the doubt arbitration, the name caser, the returning-
+visitor cold open). No service-worker VERSION bump — ordinary shell edits.
+
+---
+
 ## 2026-08-24
 
 **The search counter is built — inert until its Worker deploys.** Answers "where is

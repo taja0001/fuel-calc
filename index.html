@@ -47,7 +47,7 @@
     color-scheme: light dark;
     --ground:#f4f1ea; --panel:#fff; --panel-2:#faf7f0; --ink:#221d16; --ink-soft:#6b6154;
     --hair:#e4ddd0; --hair-strong:#d3c9b7; --amber:#b8720a; --amber-glow:#d98a12;
-    --go:#1f8a4c; --go-soft:#e7f3ec; --go-ink:#1b7f44; --warn:#b45309;
+    --go:#1f8a4c; --go-soft:#e7f3ec; --go-ink:#1b7f44; --go-pill:#14663a; --warn:#b45309;
     --shadow:0 1px 2px rgba(34,29,22,.06),0 12px 28px rgba(34,29,22,.10);
     --readout-bg:#16130f; --readout-ink:#ffb020; --readout-dim:rgba(255,176,32,.30);
     --radius:16px;
@@ -56,13 +56,13 @@
     :root{
       --ground:#141210; --panel:#201c17; --panel-2:#1a1712; --ink:#f2ece1; --ink-soft:#a89c89;
       --hair:#322c24; --hair-strong:#423a30; --amber:#ffb020; --amber-glow:#ffc247;
-      --go:#4fd188; --go-soft:#16271d; --go-ink:#4fd188; --warn:#e0a54a;
+      --go:#4fd188; --go-soft:#16271d; --go-ink:#4fd188; --go-pill:#4fd188; --warn:#e0a54a;
       --shadow:0 1px 2px rgba(0,0,0,.4),0 16px 34px rgba(0,0,0,.5);
       --readout-bg:#0c0a07; --readout-ink:#ffb020; --readout-dim:rgba(255,176,32,.24);
     }
   }
-  :root[data-theme="light"]{color-scheme:light;--ground:#f4f1ea;--panel:#fff;--panel-2:#faf7f0;--ink:#221d16;--ink-soft:#6b6154;--hair:#e4ddd0;--hair-strong:#d3c9b7;--amber:#b8720a;--amber-glow:#d98a12;--go:#1f8a4c;--go-soft:#e7f3ec;--go-ink:#1b7f44;--warn:#b45309;--shadow:0 1px 2px rgba(34,29,22,.06),0 12px 28px rgba(34,29,22,.10);--readout-bg:#16130f;--readout-ink:#ffb020;--readout-dim:rgba(255,176,32,.30);}
-  :root[data-theme="dark"]{color-scheme:dark;--ground:#141210;--panel:#201c17;--panel-2:#1a1712;--ink:#f2ece1;--ink-soft:#a89c89;--hair:#322c24;--hair-strong:#423a30;--amber:#ffb020;--amber-glow:#ffc247;--go:#4fd188;--go-soft:#16271d;--go-ink:#4fd188;--warn:#e0a54a;--shadow:0 1px 2px rgba(0,0,0,.4),0 16px 34px rgba(0,0,0,.5);--readout-bg:#0c0a07;--readout-ink:#ffb020;--readout-dim:rgba(255,176,32,.24);}
+  :root[data-theme="light"]{color-scheme:light;--ground:#f4f1ea;--panel:#fff;--panel-2:#faf7f0;--ink:#221d16;--ink-soft:#6b6154;--hair:#e4ddd0;--hair-strong:#d3c9b7;--amber:#b8720a;--amber-glow:#d98a12;--go:#1f8a4c;--go-soft:#e7f3ec;--go-ink:#1b7f44;--go-pill:#14663a;--warn:#b45309;--shadow:0 1px 2px rgba(34,29,22,.06),0 12px 28px rgba(34,29,22,.10);--readout-bg:#16130f;--readout-ink:#ffb020;--readout-dim:rgba(255,176,32,.30);}
+  :root[data-theme="dark"]{color-scheme:dark;--ground:#141210;--panel:#201c17;--panel-2:#1a1712;--ink:#f2ece1;--ink-soft:#a89c89;--hair:#322c24;--hair-strong:#423a30;--amber:#ffb020;--amber-glow:#ffc247;--go:#4fd188;--go-soft:#16271d;--go-ink:#4fd188;--go-pill:#4fd188;--warn:#e0a54a;--shadow:0 1px 2px rgba(0,0,0,.4),0 16px 34px rgba(0,0,0,.5);--readout-bg:#0c0a07;--readout-ink:#ffb020;--readout-dim:rgba(255,176,32,.24);}
 
   *{box-sizing:border-box;}
   body{margin:0;background:var(--ground);color:var(--ink);line-height:1.5;
@@ -85,6 +85,15 @@
     font-weight:700;line-height:1;color:var(--readout-ink);font-variant-numeric:tabular-nums;
     text-shadow:0 0 18px rgba(255,176,32,.35);margin:8px 0 4px;}
   .readout .where{color:var(--readout-ink);font-size:16px;font-weight:600;}
+  /* An instrument with no reading shows dashes, not a fabricated £0.00 — a petrol
+     pump before the nozzle lifts. --readout-dim finally earns its keep. */
+  .readout.empty .total{color:var(--readout-dim);text-shadow:none;}
+  /* The verdict carries the doubt: when the winning price is stale, the same dashed
+     caveat its row wears appears in the panel — in the readout's own amber, since
+     --warn has no contrast against this always-dark ground. */
+  .readout .pill.old{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;
+    text-transform:uppercase;color:var(--readout-ink);border:1px dashed var(--readout-ink);
+    background:transparent;border-radius:20px;padding:2px 8px;margin-top:6px;}
   /* The readout background is dark in both themes, so a fixed green is safe here.
      .sub.save, not .save — the element carries both classes and the plain .sub rule
      would win the cascade on equal specificity. */
@@ -117,7 +126,19 @@
   .btn:hover{filter:brightness(1.06);}
   .btn.ghost{background:var(--panel-2);color:var(--ink);border:1px solid var(--hair-strong);}
   .btn.ghost:hover{border-color:var(--amber);color:var(--amber);filter:none;}
-  .btn.block{width:100%;padding:14px;font-size:15px;margin-top:2px;}
+  .btn.block{width:100%;padding:14px;font-size:15px;margin-top:2px;margin-bottom:14px;}
+  /* The remembered car, folded to one line. Five full-size controls a returning
+     visitor never touches sat between the answer and the rows (and helped push the
+     search button to 1007px on an 844px viewport — 5 of 9 review critics). */
+  .car-summary{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:10px 12px;border:1px solid var(--hair);border-radius:12px;background:var(--panel-2);
+    font-size:14px;}
+  /* display:flex silently beats the hidden attribute — first-visit users saw an
+     empty summary bar. Author styles always outrank the UA's [hidden]{display:none}. */
+  .car-summary[hidden]{display:none;}
+  .car-summary b{font-variant-numeric:tabular-nums;}
+  .car-summary .linkish{appearance:none;border:none;background:none;color:var(--amber);
+    font-weight:600;font-size:14px;cursor:pointer;padding:6px 4px;}
 
   .loc-row{display:flex;gap:8px;align-items:stretch;}
   .loc-row .inp{flex:1;}
@@ -152,24 +173,34 @@
   .notice b{color:inherit;}
 
   .results{display:flex;flex-direction:column;gap:10px;}
-  .station{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;
+  /* align-items:start, not center: centred rows sank the rank and price to a different
+     height on every card (pill-bearing rows are taller), so the two scan columns
+     zigzagged. Start-aligned with small offsets, both columns track the name's line. */
+  .station{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;
     background:var(--panel);border:1px solid var(--hair);border-radius:12px;padding:13px 14px;box-shadow:var(--shadow);}
   .station.best{border-color:var(--go);box-shadow:var(--shadow),0 0 0 1px var(--go);}
   .rank{font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:700;color:var(--ink-soft);
-    width:22px;text-align:center;}
+    width:22px;text-align:center;margin-top:4px;}
+  .st-cost{margin-top:2px;}
   .station.best .rank{color:var(--go);}
   .st-main .brand{font-weight:700;font-size:15px;}
   .st-main .meta{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+  /* --go-pill, not --go: --go on --go-soft measures 3.84:1 at this size in light
+     theme — an AA fail the 2026-08-24 UX review caught. Same hue, darker ink. */
   .st-main .pill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;
-    text-transform:uppercase;color:var(--go);background:var(--go-soft);border-radius:20px;
+    text-transform:uppercase;color:var(--go-pill);background:var(--go-soft);border-radius:20px;
     padding:2px 8px;margin-top:6px;}
   .st-main .pill.shut{color:var(--warn);background:transparent;border:1px solid var(--warn);}
   .st-main .pill.mway{color:var(--ink-soft);background:transparent;border:1px solid var(--hair-strong);}
   .st-main .pill.old{color:var(--warn);background:transparent;border:1px dashed var(--warn);}
   /* --go-ink, not --go: this is small text on the bare panel, and light-theme --go
-     measures 4.38:1 on white — just under the 4.5:1 small-text floor. */
+     measures 4.38:1 on white — just under the 4.5:1 small-text floor. Movement pills
+     keep sentence case (the unit is "1p", not "1P") and may never wrap mid-capsule —
+     a pill broken across lines reads as a rendering bug. */
   .st-main .pill.up{color:var(--warn);background:transparent;border:1px solid var(--hair-strong);}
   .st-main .pill.down{color:var(--go-ink);background:transparent;border:1px solid var(--hair-strong);}
+  .st-main .pill.up,.st-main .pill.down{text-transform:none;letter-spacing:0;white-space:nowrap;}
+  .st-main .pill.low{color:var(--go-ink);background:transparent;border:1px solid var(--go-ink);}
   /* Closed forecourts stay listed — useful when planning tomorrow — but read as muted
      and can never hold the top spot. */
   .station.shut{opacity:.55;}
@@ -203,9 +234,16 @@
   .substation .sp{display:flex;align-items:center;gap:10px;font-weight:600;font-variant-numeric:tabular-nums;}
   .substation .dir{margin:0;font-size:15px;}
   .st-cost{text-align:right;}
-  .st-cost .total{font-weight:700;font-size:17px;font-variant-numeric:tabular-nums;}
-  .st-cost .delta{font-size:12px;color:var(--ink-soft);font-variant-numeric:tabular-nums;margin-top:2px;}
-  .station.best .st-cost .total{color:var(--go);}
+  /* On every row but the winner, the DELTA is the decision ("worth going further?")
+     and the total is context — five near-identical bold totals forced the reader to
+     subtract in their head while the pre-computed answer sat in the quietest type
+     (3 of 9 review critics, one measuring it as the first thing to vanish in
+     sunlight). Weight follows the job: delta loud, total one notch down. The winner
+     keeps the loud total — its delta slot just says "cheapest". */
+  .st-cost .total{font-weight:700;font-size:16px;font-variant-numeric:tabular-nums;}
+  .st-cost .delta{font-size:13.5px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;margin-top:2px;}
+  .station.best .st-cost .total{color:var(--go);font-size:17px;}
+  .station.best .st-cost .delta{font-size:12px;font-weight:600;color:var(--ink-soft);}
 
   details.how{margin-top:6px;}
   details.how summary{cursor:pointer;font-size:13px;color:var(--amber);font-weight:600;}
@@ -242,11 +280,11 @@
     <div class="tag">Pump price plus the fuel to drive there and back.</div>
   </header>
 
-  <div class="readout" aria-live="polite" aria-atomic="true">
+  <div class="readout empty" aria-live="polite" aria-atomic="true">
     <div class="lbl">Best option</div>
-    <div class="total" id="bestTotal">£0.00</div>
-    <div class="where" id="bestWhere">Enter your details and search</div>
-    <div class="sub" id="bestSub"></div>
+    <div class="total" id="bestTotal">£--.--</div>
+    <div class="where" id="bestWhere">No search yet</div>
+    <div class="sub" id="bestSub">One postcode is all it needs — the car details below are already filled in.</div>
     <div class="sub save" id="bestSave"></div>
   </div>
 
@@ -261,7 +299,9 @@
       <div class="field">
         <label for="postcode">Postcode</label>
         <div class="loc-row">
-          <div class="inp"><input id="postcode" type="text" inputmode="text" autocomplete="postal-code" placeholder="e.g. NG1 5FS or Nottingham"></div>
+          <!-- enterkeyhint: Enter has always searched from here (see the keydown
+               handler) — this just makes the phone keyboard's return key SAY so. -->
+          <div class="inp"><input id="postcode" type="text" inputmode="text" enterkeyhint="search" autocomplete="postal-code" placeholder="e.g. NG1 5FS or Nottingham"></div>
           <button class="btn ghost" id="useGps" type="button" title="Use my location">📍</button>
         </div>
         <div class="matched" id="pcMatched"></div>
@@ -282,7 +322,7 @@
       </div>
       <div class="field">
         <label for="destPc">Destination</label>
-        <div class="inp"><input id="destPc" type="text" inputmode="text" autocomplete="postal-code" placeholder="destination postcode or town"></div>
+        <div class="inp"><input id="destPc" type="text" inputmode="text" enterkeyhint="search" autocomplete="postal-code" placeholder="destination postcode or town"></div>
       </div>
       <div class="field">
         <label for="offRoute">Max detour off route</label>
@@ -291,8 +331,21 @@
     </div>
   </div>
 
+  <!-- The search button lives here, directly under "Where to?" — NOT below the car
+       card. Defaults make the car card optional reading, and queuing the only action
+       behind it put the button at 1007px on an 844px first screen. -->
+  <button class="btn block" id="search" type="button">Find the cheapest fill-up</button>
+
   <div class="card">
     <h2>Your car</h2>
+    <!-- Restored-from-localStorage visitors see this one-liner instead of the full
+         controls; Change expands them. The controls stay in the DOM either way, so
+         every listener (persistence, fuel-change rerun, litres readout) still works. -->
+    <div class="car-summary" id="carSummary" hidden>
+      <span id="carSummaryText"></span>
+      <button class="linkish" id="carChange" type="button" aria-label="Change car details">Change</button>
+    </div>
+    <div id="carDetails">
     <div class="row">
       <div class="field">
         <label for="mpg">Fuel economy</label>
@@ -311,6 +364,7 @@
         <option value="B7">Diesel (B7)</option>
         <option value="B7P">Premium diesel</option>
       </select></div>
+    </div>
     </div>
     <div class="field">
       <label>How full is it now?</label>
@@ -337,8 +391,6 @@
       </div>
     </div>
   </div>
-
-  <button class="btn block" id="search" type="button">Find the cheapest fill-up</button>
 
   <div id="msg" aria-live="polite"></div>
   <div class="results" id="results"></div>
@@ -370,11 +422,35 @@
   // goes through here. One forgotten sink is script execution the day a forecourt's
   // trading name contains a tag, and there's no CSP to catch it.
   const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  // Feed names arrive SHOUTING and padded with plumbing ("TESCO BULWELL EXTRA -
+  // PETROL FILLING STATION") — the loudest ink in every row went to whoever typed the
+  // feed entry, and "PETROL FILLING STATION" carries zero information in a list made
+  // entirely of petrol filling stations (5 of 9 critics, 2026-08-24 UX review). So:
+  // strip the generic suffixes, and title-case names that arrive FULLY uppercase —
+  // mixed-case names were human-cased, pass them through. Tokens of ≤3 letters stay
+  // verbatim (BP, EG, MFG); the boundary excludes apostrophes exactly like
+  // canonBrand below — "ESSON'S" must become "Esson's", never "Esson'S".
+  const NAME_SUFFIX = /[\s-]*(petrol\s*filling\s*station|filling\s*station|service[-\s]station|petrol\s*station|pfs)\s*$/i;
+  // ...but common little words escape the acronym rule, or SOUTHEND-ON-SEA becomes
+  // Southend-ON-SEA. Word boundaries include hyphens; apostrophes stay inside words.
+  const NAME_SMALL = new Set(["the","and","of","on","at","in","by","sea","way","end"]);
+  const caseName = raw => {
+    const x = String(raw || "").replace(NAME_SUFFIX, "").trim();
+    if (!x || x !== x.toUpperCase()) return x;
+    return x.toLowerCase().replace(/(^|[^a-z0-9'])([a-z][^\s-]*)/g, (_, before, word) =>
+      before + (word.length <= 3 && !NAME_SMALL.has(word) ? word.toUpperCase()
+                                 : word[0].toUpperCase() + word.slice(1)));
+  };
   const label = s => {
-    const brand = s.brand || "", place = s.name || s.postcode || "";
+    const brand = caseName(s.brand || ""), place = caseName(s.name || s.postcode || "");
     if (!place) return brand;
     if (!brand) return place;
-    return place.toLowerCase().includes(brand.toLowerCase()) ? place : `${brand} ${place}`;
+    if (place.toLowerCase().includes(brand.toLowerCase())) return place;
+    // "EG On the Move" + "EG Trent Bridge" said EG twice — drop a repeated lead word.
+    const lead = brand.split(/\s+/)[0].toLowerCase();
+    const rest = place.split(/\s+/);
+    if (rest.length > 1 && rest[0].toLowerCase() === lead) return `${brand} ${rest.slice(1).join(" ")}`;
+    return `${brand} ${place}`;
   };
 
   // Fold brand-name variants (SHELL/Shell, BP/BP OIL UK/BP HARVEST ENERGY, ...) into one.
@@ -488,8 +564,12 @@
     const pence = Math.abs(h[0]);
     return {
       cls: up ? "up" : "down",
-      text: (up ? "▲ " : "▼ ") + (pence % 1 ? pence.toFixed(1) : pence) + "p " +
-            sinceWords(s, fuel) + (h.length === 1 ? " · lowest this week" : ""),
+      // Direction in words, not just a 7px glyph — the arrows are the first thing
+      // colour-blind and low-vision readers lose. "Week low" rides as its own short
+      // pill so the movement capsule can never wrap mid-sentence.
+      text: (up ? "▲ up " : "▼ down ") + (pence % 1 ? pence.toFixed(1) : pence) + "p " +
+            sinceWords(s, fuel),
+      low: h.length === 1,
     };
   }
 
@@ -1050,7 +1130,9 @@
     if (!rows.length){
       setMsg("No forecourts with " + ctx.fuel + " prices " + (ctx.mode === "journey" ? "near your route. Try a bigger detour." : "within that radius. Try a bigger radius."), true);
       res.innerHTML = "";
-      $("bestTotal").textContent = "£0.00";
+      // Dashes, not £0.00 — zero is exactly the wrong reading next to "No results".
+      document.querySelector(".readout").classList.add("empty");
+      $("bestTotal").textContent = "£--.--";
       $("bestWhere").textContent = "No results"; $("bestSub").textContent = "";
       $("bestSave").textContent = "";
       return;
@@ -1072,12 +1154,28 @@
     // when OSRM was unavailable and distances are estimates.
     const fmtMin = m => Math.max(1, Math.round(m)) + " min";
     const distTime = r => r.dist.toFixed(1) + " mi" + (r.mins != null ? " · " + fmtMin(r.mins) : "");
+    document.querySelector(".readout").classList.remove("empty");
     $("bestTotal").textContent = gbp(best.total);
     $("bestWhere").textContent = label(best.s);
     const awayWord = ctx.mode === "journey" ? "off route" : "away";
     const tripWord = ctx.mode === "journey" ? "detour" : "trip";
-    $("bestSub").textContent =
-      `${ctx.litresFill.toFixed(1)} L @ ${best.price.toFixed(1)}p · ${distTime(best)} ${awayWord} · fill ${gbp(best.fillCost)} + ${tripWord} ${gbp(best.tripCost)}`;
+    // Name the fuel. Nothing on the results screen said which grade the numbers were
+    // for, so a diesel regular re-checked the dropdown before believing any of them.
+    const FUEL_WORD = { E10: "unleaded", E5: "super unleaded", B7: "diesel", B7P: "premium diesel" };
+    const subText =
+      `${ctx.litresFill.toFixed(1)} L of ${FUEL_WORD[ctx.fuel] || ctx.fuel} @ ${best.price.toFixed(1)}p · ${distTime(best)} ${awayWord} · fill ${gbp(best.fillCost)} + ${tripWord} ${gbp(best.tripCost)}`;
+    // The verdict carries the doubt: the winner's row admits a stale price below the
+    // fold, but the person who reads only the headline is the one who drives. Same
+    // dashed caveat, in the panel itself. subText is numbers and fixed words, but it
+    // goes through esc() anyway — this is an innerHTML sink and the invariant holds.
+    const bestAge = priceAgeDays(best.s, ctx.fuel);
+    const bestStale = bestAge !== null && bestAge >= STALE_DAYS;
+    if (bestStale){
+      $("bestSub").innerHTML = esc(subText) +
+        ` <span class="pill old">price ${esc(ageWords(bestAge))} old</span>`;
+    } else {
+      $("bestSub").textContent = subText;
+    }
 
     // The comparison that justifies the app's existence: what did this search save you
     // against just driving to the nearest forecourt, which is what people do without it?
@@ -1122,7 +1220,28 @@
           `${shutCount === 1 ? "One forecourt is" : shutCount + " forecourts are"} <b>closed right now</b> —
            still listed, greyed out, and never ranked best value.`}];
 
-    for (const note of (staleNote ? [{warn:true, html:staleNote}] : []).concat(openNotes, ctx.notes || [])){
+    // ...and ACTS on the doubt: a stale winner with a whisker-thin lead over a
+    // fresh-priced runner-up is a coin flip, not a verdict. Plausible drift is about
+    // 1p/L per week of staleness (the archive's own measured rate) on the litres
+    // being bought; when the winning margin is inside that, say so in plain English.
+    const doubtNotes = [];
+    if (bestStale){
+      const rival = rows.find(r => {
+        if (r === best || r.shut) return false;
+        const a = priceAgeDays(r.s, ctx.fuel);
+        return a !== null && a < 7;
+      });
+      if (rival){
+        const margin = rival.total - best.total;
+        const drift = (bestAge / 7) * 0.01 * ctx.litresFill;
+        if (margin < drift) doubtNotes.push({warn:true, html:
+          `<b>${esc(label(best.s))}</b>'s price was last checked <b>${esc(ageWords(bestAge))} ago</b>. ` +
+          `<b>${esc(label(rival.s))}</b> (#${rows.indexOf(rival) + 1}, ${gbp(margin)} more) was priced ` +
+          `this week — it may really be the cheaper one.`});
+      }
+    }
+
+    for (const note of (staleNote ? [{warn:true, html:staleNote}] : []).concat(doubtNotes, openNotes, ctx.notes || [])){
       const n = document.createElement("div");
       n.className = "notice" + (note.warn ? " warn" : "");
       n.innerHTML = note.html;
@@ -1157,6 +1276,7 @@
            ${r.shut ? `<span class="pill shut">Closed${opens ? " · opens " + opens : ""}</span>` : ''}
            ${stale ? `<span class="pill old">Price ${ageWords(ageDays)} old</span>` : ''}
            ${moved ? `<span class="pill ${moved.cls}">${moved.text}</span>` : ''}
+           ${moved && moved.low ? '<span class="pill low">week low</span>' : ''}
            ${r.s.mw ? '<span class="pill mway">Motorway services</span>' : ''}
          </div>
          <div class="st-cost">
@@ -1293,8 +1413,22 @@
       if (c.tank) $("tank").value = c.tank;
       if (c.fuel) $("fuel").value = c.fuel;
       setLevel(level);   // the litres-to-fill readout was computed from the default tank
+      // The remembered car folds to one line — the full controls sat between the
+      // answer and the rows on every visit, never touched. The inputs stay in the
+      // DOM (hidden), so every listener keeps working; Change just reveals them.
+      // Values are the user's own localStorage, but it's an innerHTML sink: esc().
+      const opt = $("fuel").selectedOptions[0];
+      $("carSummaryText").innerHTML =
+        `<b>${esc($("mpg").value)} mpg</b> · <b>${esc($("tank").value)} L</b> · ${esc(opt ? opt.textContent : $("fuel").value)}`;
+      $("carDetails").hidden = true;
+      $("carSummary").hidden = false;
     }
   } catch {}
+  $("carChange").addEventListener("click", () => {
+    $("carSummary").hidden = true;
+    $("carDetails").hidden = false;
+    $("mpg").focus();
+  });
   // Comparing grades shouldn't cost a button press per grade: changing the fuel type
   // re-runs the last search. A full rerun, not a price swap on screen — different
   // forecourts sell different grades, so the shortlist itself can change.

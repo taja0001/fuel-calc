@@ -37,16 +37,21 @@ const S = (name, brand, pos, price, extra = {}) => ({
   prices: { E10: price, B7: price + 12 }, o: 1, pu: MIN(FIXED) - 60, ...extra,
 });
 const STATIONS = [
-  // CHEAP FAR fell 1p an hour ago to its cheapest of the week ([delta] with no
-  // "over" means today IS the week's low); DEAR NEAR rose 2p two days back —
-  // 2026-07-28 was a Tuesday, so its badge must say so.
-  S("CHEAP FAR", "FuelCo", at(3, 0), 140.0, { hist: { E10: [-1] } }),
+  // CHEAP FAR wins on total but its price is 15 days STALE — and SUPERSTORE, the
+  // fresh-priced runner-up, sits £0.57 behind: inside the plausible-drift window, so
+  // the doubt arbitration notice must fire. (142.5, not lower: CHEAP FAR must stay
+  // the winner on B7 too — the fuel-switch tests pin its 152.0p diesel figure.)
+  // SUPERSTORE also fell 1p an hour ago to
+  // its week low ([delta] with no "over"); DEAR NEAR rose 2p two days back —
+  // 2026-07-28 was a Tuesday, so its badge must say so. SUPERSTORE and STALE carry
+  // feed-style names to pin the caser: suffix stripped, apostrophe intact.
+  S("CHEAP FAR", "FuelCo", at(3, 0), 140.0, { pu: MIN(FIXED) - 15 * 1440 }),
   S("DEAR NEAR", "NearGarage", at(0.5, 0), 155.9,
     { pu: MIN(FIXED) - 2 * 1440, hist: { E10: [2, 3] } }),
   S("NIGHT OFF", "NightOff", at(0.6, 0.1), 139.0, { o: DAY_HOURS }),  // cheapest total, but shut
   S("VILLAGE", "Kirkby Motors", at(1, -0.2), 150.0),
-  S("STALE", "OldPrice", at(1.2, 0.3), 149.0, { pu: MIN(FIXED) - 30 * 1440 }),
-  S("SUPERSTORE", "TESCO", at(2, 0.2), 145.0, { sm: 1 }),
+  S("STALE CORNER'S", "OldPrice", at(1.2, 0.3), 149.0, { pu: MIN(FIXED) - 30 * 1440 }),
+  S("SUPERSTORE - PETROL FILLING STATION", "TESCO", at(2, 0.2), 142.5, { sm: 1, hist: { E10: [-1] } }),
   S("SERVICES", "Moto", at(2.5, -0.3), 152.0, { mw: 1 }),
 ];
 const INDEX_JSON = JSON.stringify({ days: Array.from({ length: 26 }, (_, i) => ({
@@ -174,7 +179,7 @@ const rows = () => page.evaluate(() =>
 test("ranks by true cost: the cheap-but-far forecourt beats the dear-but-near one", async () => {
   const r = await rows();
   assert.equal(r.length, STATIONS.length, "every fixture station listed");
-  assert.match(r[0].name, /CHEAP FAR/, "best = cheapest total among OPEN forecourts");
+  assert.match(r[0].name, /cheap far/i, "best = cheapest total among OPEN forecourts");
   // predict its total with the same arithmetic the app uses (fill 37.5 L default car)
   const road = haversineMi(ORIGIN, STATIONS[0]) * ROAD;
   const expected = 37.5 * 1.40 + (road * 2) / 45 * 4.54609 * 1.40;
@@ -191,7 +196,7 @@ test("ranks by true cost: the cheap-but-far forecourt beats the dear-but-near on
 
 test("a closed forecourt with the lowest total never takes the top spot", async () => {
   const r = await rows();
-  const shut = r.find(x => /NIGHT OFF/.test(x.name));
+  const shut = r.find(x => /night off/i.test(x.name));
   assert.ok(shut.shut, "tagged shut");
   assert.ok(shut.total < r[0].total, "it IS the cheapest — that's the trap");
   assert.equal(r.findIndex(x => x.shut) , r.filter(x => !x.shut).length, "all open rows rank above it");
@@ -212,15 +217,33 @@ test("the savings line matches the arithmetic it claims", async () => {
 
 test("a week's price moves are badged: risers dated, fallers marking the week low, steady quiet", async () => {
   const r = await rows();
-  assert.match(r.find(x => /DEAR NEAR/.test(x.name)).pills.join(" "), /▲ 2p since Tue/);
-  assert.match(r.find(x => /CHEAP FAR/.test(x.name)).pills.join(" "), /▼ 1p today · lowest this week/);
-  assert.doesNotMatch(r.find(x => /VILLAGE/.test(x.name)).pills.join(" "), /[▲▼]/);
+  assert.match(r.find(x => /dear near/i.test(x.name)).pills.join(" "), /▲ up 2p since Tue/);
+  const faller = r.find(x => /superstore/i.test(x.name)).pills.join(" ");
+  assert.match(faller, /▼ down 1p today/);          // direction in words, never wraps
+  assert.match(faller, /week low/i);                // its own short pill
+  assert.doesNotMatch(r.find(x => /village/i.test(x.name)).pills.join(" "), /[▲▼]/);
+});
+
+test("the verdict carries the doubt: stale winner caveated in the panel and arbitrated", async () => {
+  assert.match(await page.locator("#bestSub").textContent(), /37\.5 L of unleaded/,
+    "the fuel is named where the numbers are");
+  assert.match(await page.locator(".readout .pill.old").textContent(), /price 2 weeks old/i,
+    "the winner's staleness reaches the headline, not just row 1");
+  const notice = await page.locator("#results .notice").first().textContent();
+  assert.match(notice, /last checked 2 weeks ago/i);
+  assert.match(notice, /Tesco Superstore \(#2, £0\.5\d more\) was priced this week/);
+});
+
+test("feed names are calmed: suffix stripped, title-cased, apostrophes intact", async () => {
+  const r = await rows();
+  assert.equal(r.find(x => /superstore/i.test(x.name)).name, "Tesco Superstore");
+  assert.equal(r.find(x => /stale corner/i.test(x.name)).name, "OldPrice Stale Corner's");
 });
 
 test("a month-old price is badged; motorway services are labelled", async () => {
   const r = await rows();
-  assert.match(r.find(x => /STALE/.test(x.name)).pills.join(" "), /Price a month old/);
-  assert.match(r.find(x => /SERVICES/.test(x.name)).pills.join(" "), /Motorway services/);
+  assert.match(r.find(x => /stale corner/i.test(x.name)).pills.join(" "), /Price a month old/);
+  assert.match(r.find(x => /services/i.test(x.name)).pills.join(" "), /Motorway services/);
 });
 
 test("brand grouping: Kirkby Motors is not Moto, and Tesco files under Supermarkets", async () => {
@@ -367,6 +390,32 @@ test("a fuel switch landing MID-search still takes effect once the search finish
   } finally {
     await page.context().unroute(pattern, slow);
   }
+});
+
+test("returning visitors: honest empty readout, car folded to one line, button above the car card", async () => {
+  // A fresh page in the same context: localStorage carries the car saved by the
+  // fuel-switch tests, so this is the returning-visitor cold open.
+  const p2 = await page.context().newPage();
+  await p2.goto(base + "/index.html", { waitUntil: "load" });
+  assert.equal((await p2.locator("#bestTotal").textContent()).trim(), "£--.--",
+    "an instrument with no reading shows dashes, not £0.00");
+  assert.equal(await p2.locator(".readout.empty").count(), 1);
+  assert.ok(await p2.locator("#carSummary").isVisible(), "remembered car folds to a summary");
+  assert.match(await p2.locator("#carSummaryText").textContent(), /mpg/);
+  assert.ok(await p2.locator("#carDetails").isHidden(), "full controls hidden until Change");
+  await p2.locator("#carChange").click();
+  assert.ok(await p2.locator("#carDetails").isVisible(), "Change expands the controls");
+  assert.ok(await p2.evaluate(() =>
+    !!(document.getElementById("search").compareDocumentPosition(document.getElementById("mpg"))
+       & Node.DOCUMENT_POSITION_FOLLOWING)),
+    "the search button sits above the car card");
+  // And the FIRST-visit case: no saved car -> full controls, no summary bar. This
+  // exact state shipped broken once (display:flex beat the hidden attribute).
+  await p2.evaluate(() => localStorage.clear());
+  await p2.reload({ waitUntil: "load" });
+  assert.ok(await p2.locator("#carSummary").isHidden(), "fresh visitors get no empty summary bar");
+  assert.ok(await p2.locator("#carDetails").isVisible(), "fresh visitors get the full controls");
+  await p2.close();
 });
 
 test("the price trend renders from the daily index", async () => {

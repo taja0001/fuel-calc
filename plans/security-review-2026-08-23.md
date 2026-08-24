@@ -6,7 +6,8 @@ very little visitor data leaves the browser, none of it reaches the owner. Full
 findings and the "who sees what about a visitor" inventory aren't duplicated here;
 this is the action list. Two code findings are already **done** (23 Aug): the CSP,
 the two remaining unescaped sinks, and `data/index.json` now validated in CI — see
-`CHANGELOG.md`. Everything below needs Thomas, not code, or is optional hardening.
+`CHANGELOG.md`. **§1 (branch-protect `main`) is done as of 24 Aug** — see below.
+Everything else needs Thomas, not code, or is optional hardening.
 
 Nothing here is urgent. The findings are about *what happens if a key leaks* and
 *tightening edges*, not an active hole.
@@ -15,24 +16,40 @@ Nothing here is urgent. The findings are about *what happens if a key leaks* and
 
 ## Needs Thomas — account and DNS settings
 
-### 1. Branch-protect `main` — the highest-value item on this list
+### 1. Branch-protect `main` — ✅ DONE 2026-08-24
 
-`main` is currently unprotected (`protected:false`), and Pages auto-deploys every
-push to it immediately (legacy build, independent of CI). `validate-prices.yml`
-calls itself "the backstop for a bad push," but it runs *after* the push, gates
-nothing, and can't stop a force-push. Two consequences: (a) the git history of
-`data/prices.json` — the price archive, the actual product — could be rewritten or
-destroyed by anyone holding the Pi's push credential or the account; (b) a bad Pi
-run publishes live before validation finishes, no attacker required.
+Applied via the API (`PUT /repos/taja0001/fuel-calc/branches/main/protection`), not
+the Settings UI — same classic branch-protection object either way. Live rule:
+force pushes **blocked**, deletions **blocked**, administrators **included**, and
+deliberately *no* required status checks, *no* required PR reviews, *no* push
+restrictions — so direct pushes still work and the Pi is unaffected. No repo
+rulesets exist that could interact with it.
 
-**Do:** Settings → Branches → add a rule for `main` → block force pushes and
-deletions, "include administrators" on (the Pi pushes as the owner, so this must
-cover them too). **Do not** make the "Validate prices" status check *required* —
-required checks reject direct pushes of fresh commits, which would break the Pi's
-hourly push outright. Keep the validator advisory; if you want it to actually get
-noticed on failure, that's a GitHub notification setting, not a merge gate.
+Verified for real, not just read back from the config: a throwaway branch
+(`bp-verify`, since deleted) was protected with the identical object, then (a) a
+plain fast-forward push as the owner **succeeded** — this is the Pi's exact path;
+(b) a force-push of a rewritten history was **rejected** ("Cannot force-push to
+this branch", protected branch hook declined); (c) a branch delete was **rejected**
+("Cannot delete this branch"). `main` was never a push target during the test.
 
-*Two minutes, breaks nothing, closes the one finding that could cost the archive.*
+The original reasoning, kept because it explains the *shape* of the rule:
+
+> `main` was unprotected (`protected:false`), and Pages auto-deploys every
+> push to it immediately (legacy build, independent of CI). `validate-prices.yml`
+> calls itself "the backstop for a bad push," but it runs *after* the push, gates
+> nothing, and can't stop a force-push. Two consequences: (a) the git history of
+> `data/prices.json` — the price archive, the actual product — could be rewritten or
+> destroyed by anyone holding the Pi's push credential or the account; (b) a bad Pi
+> run publishes live before validation finishes, no attacker required.
+>
+> **Do not** make the "Validate prices" status check *required* — required checks
+> reject direct pushes of fresh commits, which would break the Pi's hourly push
+> outright. Keep the validator advisory; if you want it to actually get noticed on
+> failure, that's a GitHub notification setting, not a merge gate.
+
+**Still open, and now the thing that guards this one: #2 below.** A broad-scope PAT
+can call the repo-admin API and delete this rule before force-pushing, so until the
+Pi's token is scoped down, the protection is only as strong as that token.
 
 ### 2. Scope the Pi's PAT down to Contents-only — pairs with #1
 

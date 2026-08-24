@@ -180,9 +180,12 @@ test("ranks by true cost: the cheap-but-far forecourt beats the dear-but-near on
   const r = await rows();
   assert.equal(r.length, STATIONS.length, "every fixture station listed");
   assert.match(r[0].name, /cheap far/i, "best = cheapest total among OPEN forecourts");
-  // predict its total with the same arithmetic the app uses (fill 37.5 L default car)
+  // predict its total with the same arithmetic the app uses (fill 37.5 L default car).
+  // mpg is read from the page, not hardcoded: it is a product decision that has already
+  // moved once (45 -> 46 with the car presets) and a literal here fails obscurely.
   const road = haversineMi(ORIGIN, STATIONS[0]) * ROAD;
-  const expected = 37.5 * 1.40 + (road * 2) / 45 * 4.54609 * 1.40;
+  const mpg = await page.evaluate(() => parseFloat(document.getElementById("mpg").value));
+  const expected = 37.5 * 1.40 + (road * 2) / mpg * 4.54609 * 1.40;
   assert.ok(Math.abs(r[0].total - expected) < 0.02, `${r[0].total} ≈ ${expected.toFixed(2)}`);
   assert.match(r[0].meta, /\d+ min/, "drive time shown when OSRM answered");
   const live = await page.evaluate(() => ({
@@ -284,9 +287,11 @@ test("journey mode: the headline panel says what the whole trip costs", async ()
   await page.waitForFunction(() =>
     document.getElementById("bestSave").textContent.startsWith("This journey"), null, { timeout: 15000 });
   const line = await page.evaluate(() => document.getElementById("bestSave").textContent);
-  // 20 mi at the default 45 mpg = 2.02 L; best OPEN price en route is 140.0p
-  // (the 139.0p forecourt is closed at the pinned 23:15 and must not set the quote)
-  const litres = 20 / 45 * 4.54609;
+  // 20 mi at the default mpg; best OPEN price en route is 140.0p (the 139.0p forecourt
+  // is closed at the pinned 23:15 and must not set the quote). mpg read from the page —
+  // see the note in the true-cost test.
+  const mpg = await page.evaluate(() => parseFloat(document.getElementById("mpg").value));
+  const litres = 20 / mpg * 4.54609;
   const cost = litres * 1.40;
   assert.match(line, /This journey will cost you about £/);
   assert.match(line, new RegExp(`20 mi · ${litres.toFixed(0)} L`));
@@ -446,4 +451,99 @@ test("a failed refresh keeps the real stations instead of swapping in sample dat
   assert.equal(state.sampleNote, false, "no sample-data note");
   assert.ok(state.rows > 0, "results still on screen");
   await page.context().unroute("**/data/prices.json");
+});
+
+// --- car presets -------------------------------------------------------------------
+// These run on their own pages with localStorage explicitly cleared: the
+// returning-visitor test above clears it for the whole context, so neither a saved car
+// nor the absence of one can be assumed by position in the file.
+const freshPage = async () => {
+  const p = await page.context().newPage();
+  await p.goto(base + "/index.html", { waitUntil: "load" });
+  await p.evaluate(() => localStorage.clear());
+  await p.reload({ waitUntil: "load" });
+  return p;
+};
+const pressed = (p, name) => p.locator(`.seg[data-preset="${name}"]`).getAttribute("aria-pressed");
+
+test("car presets: a tap fills both fields for real, and the chip lights only while they hold", async () => {
+  const p = await freshPage();
+  // The 46 mpg default is chosen so a first visit truthfully lights one chip — that is
+  // what teaches the feature, so it is a behaviour, not a coincidence.
+  assert.equal(await pressed(p, "hatch"), "true", "a first visit arrives on the family-hatchback figures");
+
+  await p.locator('.seg[data-preset="big4x4"]').click();
+  assert.deepEqual(await p.evaluate(() => ({
+    mpg:  document.getElementById("mpg").value,
+    tank: document.getElementById("tank").value,
+    out:  document.getElementById("levelOut").textContent,
+    said: document.getElementById("presetSaid").textContent,
+  })), {
+    mpg: "26", tank: "85",
+    // 85 L tank at the default quarter full. The readout only moves if the tap
+    // dispatched a real input event instead of just assigning .value — that write is
+    // also what saves the car, so this one string covers both.
+    out: "25% full · ~64 L to fill",
+    said: "Filled in typical figures: 26 mpg, 85 litre tank.",
+  });
+  assert.equal(await pressed(p, "big4x4"), "true");
+  assert.equal(await pressed(p, "hatch"), "false", "only the matching chip is lit");
+
+  // Hand-editing the mpg un-lights it: the highlight is derived from the fields, so the
+  // chips can never claim figures the car doesn't have.
+  await p.locator("#mpg").fill("31");
+  assert.equal(await pressed(p, "big4x4"), "false");
+  await p.close();
+});
+
+test("car presets are fuel-adaptive, never rewrite the car, and survive a reload", async () => {
+  const p = await freshPage();
+  // One figure per chip would be ~20% out for a diesel driver, and in journey mode that
+  // error moves which forecourts are reachable, not just the pennies.
+  await p.selectOption("#fuel", "B7");
+  await p.locator('.seg[data-preset="small"]').click();
+  assert.equal(await p.locator("#mpg").inputValue(), "58", "the diesel variant, not the petrol one");
+
+  // Changing fuel afterwards must not rewrite the numbers — no surprise field edits.
+  // The chip going dark is the honest nudge that the figures no longer match.
+  await p.selectOption("#fuel", "E10");
+  assert.equal(await p.locator("#mpg").inputValue(), "58", "a fuel change never overwrites mpg");
+  assert.equal(await pressed(p, "small"), "false");
+
+  // The tap dispatched change, so the car persisted; on reload the chip re-derives from
+  // the restored pair, compared against the restored fuel.
+  await p.selectOption("#fuel", "B7");
+  await p.reload({ waitUntil: "load" });
+  assert.ok(await p.locator("#carSummary").isVisible(), "the tap saved a car to remember");
+  await p.locator("#carChange").click();
+  assert.equal(await pressed(p, "small"), "true", "a restored car re-lights its chip");
+
+  // A hybrid has no diesel figure and a van no petrol one; the single figure serves both
+  // fuels rather than the chip filling a blank.
+  await p.locator('.seg[data-preset="hybrid"]').click();
+  assert.equal(await p.locator("#mpg").inputValue(), "60", "hybrid fills its petrol figure on diesel");
+  await p.selectOption("#fuel", "E10");
+  await p.locator('.seg[data-preset="van"]').click();
+  assert.equal(await p.locator("#mpg").inputValue(), "36", "van fills its diesel figure on petrol");
+
+  await p.evaluate(() => localStorage.clear());
+  await p.close();
+});
+
+test("no two preset chips share a mpg+tank pair, in either fuel", async () => {
+  // The highlight is derived, so a collision would light two chips at once and there is
+  // no way to tell them apart. Guards the figures against a future well-meaning edit.
+  const p = await freshPage();
+  for (const fuel of ["E10", "B7"]) {
+    await p.selectOption("#fuel", fuel);
+    const pairs = [];
+    for (const name of ["small","hatch","suv","big4x4","hybrid","van"]) {
+      await p.locator(`.seg[data-preset="${name}"]`).click();
+      pairs.push(await p.evaluate(() =>
+        document.getElementById("mpg").value + "/" + document.getElementById("tank").value));
+    }
+    assert.equal(new Set(pairs).size, pairs.length, `${fuel}: duplicate pair in ${pairs.join(" ")}`);
+  }
+  await p.evaluate(() => localStorage.clear());
+  await p.close();
 });

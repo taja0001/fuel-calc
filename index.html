@@ -159,6 +159,15 @@
   .level-fine output{display:block;text-align:center;margin-top:4px;font-size:12.5px;
     color:var(--ink-soft);font-variant-numeric:tabular-nums;}
   .segs.modetabs{grid-template-columns:1fr 1fr;margin-bottom:14px;}
+  /* The preset chips wrap instead of sharing .segs' 5-column grid, which was built for
+     one-glyph gauge labels — six worded chips have to reflow at 360px. The horizontal
+     padding is needed too: .seg ships `padding:10px 0`, fine for "¼", touching the
+     border for "Family hatchback". */
+  .segs.presets{display:flex;flex-wrap:wrap;grid-template-columns:none;margin-bottom:13px;}
+  .segs.presets .seg{flex:1 1 auto;padding:9px 11px;}
+  .preset-hint{font-size:12px;color:var(--ink-soft);margin:0 0 7px;}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+    clip:rect(0,0,0,0);white-space:nowrap;border:0;}
   .seg{appearance:none;border:1px solid var(--hair-strong);background:var(--panel-2);color:var(--ink);
     border-radius:9px;padding:10px 0;font-size:14px;font-weight:700;cursor:pointer;transition:all .12s;
     font-variant-numeric:tabular-nums;}
@@ -346,10 +355,31 @@
       <button class="linkish" id="carChange" type="button" aria-label="Change car details">Change</button>
     </div>
     <div id="carDetails">
+    <!-- "What's your mpg?" is this app's biggest ask of a stranger: most people don't
+         know, and the unsure ones fear that guessing wrong breaks the answer. One tap
+         fixes both. Figures are owner-reported real-world averages, never WLTP (which
+         flatters by 10-25%) — sources per row in plans/car-presets.md. Deliberately no
+         numbers on the chip faces: the filled inputs are the receipt. -->
+    <p class="preset-hint" id="presetHint">Not sure about the numbers? Tap the closest match — you can tweak them after.</p>
+    <div class="segs presets" role="group" aria-label="Car type" aria-describedby="presetHint">
+      <button class="seg" type="button" data-preset="small"  aria-label="Small car — like a Fiesta, Corsa, Polo or Fiat 500"     title="Like a Fiesta, Corsa, Polo or Fiat 500">Small car</button>
+      <button class="seg" type="button" data-preset="hatch"  aria-label="Family hatchback — like a Golf, Focus or Astra"        title="Like a Golf, Focus or Astra">Family hatchback</button>
+      <button class="seg" type="button" data-preset="suv"    aria-label="SUV — like a Qashqai, Kuga or Tiguan"                  title="Like a Qashqai, Kuga or Tiguan">SUV</button>
+      <button class="seg" type="button" data-preset="big4x4" aria-label="Large four-by-four or big SUV — like an X5, Discovery or XC90" title="Like an X5, Discovery or XC90">4x4 / big SUV</button>
+      <button class="seg" type="button" data-preset="hybrid" aria-label="Hybrid — like a Yaris or Corolla hybrid, or a Prius"   title="Like a Yaris or Corolla hybrid, or a Prius">Hybrid</button>
+      <button class="seg" type="button" data-preset="van"    aria-label="Van — like a Transit Custom or Transporter"            title="Like a Transit Custom or Transporter">Van</button>
+    </div>
+    <!-- Fields mutating elsewhere in the DOM are silent to a screen reader, so a tap
+         says what it did. Its own region: #msg is the search-status slot and renders a
+         visible notice box, which would be noise on top of the filled inputs. -->
+    <div id="presetSaid" class="sr-only" aria-live="polite" aria-atomic="true"></div>
     <div class="row">
       <div class="field">
         <label for="mpg">Fuel economy</label>
-        <div class="inp"><input id="mpg" type="number" inputmode="decimal" value="45" min="1" step="0.1"><span class="suf">mpg</span></div>
+        <!-- 46, not a round 45: the default has always meant "a typical family car", and
+             46 is the sourced figure for one — so a first visit truthfully lights the
+             Family hatchback chip, which teaches what the chips do better than copy. -->
+        <div class="inp"><input id="mpg" type="number" inputmode="decimal" value="46" min="1" step="0.1"><span class="suf">mpg</span></div>
       </div>
       <div class="field">
         <label for="tank">Tank size</label>
@@ -1443,6 +1473,66 @@
       }));
     } catch {}
   }));
+
+  // Car presets. Two rules make these safe to reason about:
+  //
+  //   1. The pressed state is DERIVED from the inputs, never stored. A chip is lit if
+  //      and only if the fields currently hold its exact pair, so hand-editing the mpg
+  //      un-lights it on the keystroke and the chips can never claim figures the car
+  //      doesn't have. Same idiom setLevel() uses for the gauge segs — no selection
+  //      state to persist, desync, or lie about.
+  //   2. A tap fires real input+change events rather than only assigning .value.
+  //      Programmatic writes fire nothing, which would silently skip the localStorage
+  //      save and leave the "~N L to fill" readout showing the old tank.
+  //
+  // Each chip carries a petrol AND a diesel figure: one number would be ~20% out for
+  // half the country, and in journey mode that error moves *reachability*, not just
+  // pennies. Where a body style barely exists in the other fuel (diesel hybrid, petrol
+  // Transit) the single figure serves both — deliberate, recorded so it isn't filed as
+  // a bug later. Tapping never touches the fuel select and never triggers a rerun: the
+  // analogue is a manual mpg edit, not a fuel change.
+  const PRESETS = {
+    small:  {petrol: 46,   diesel: 58,   tank: 40},
+    hatch:  {petrol: 46,   diesel: 54,   tank: 50},
+    suv:    {petrol: 39,   diesel: 48,   tank: 55},
+    big4x4: {petrol: 26,   diesel: 32,   tank: 85},
+    hybrid: {petrol: 60,   diesel: null, tank: 40},
+    van:    {petrol: null, diesel: 36,   tank: 70},
+  };
+  const presetBtns = [...document.querySelectorAll(".seg[data-preset]")];
+  const presetMpg = p => {
+    const diesel = $("fuel").value === "B7" || $("fuel").value === "B7P";
+    return (diesel ? (p.diesel ?? p.petrol) : (p.petrol ?? p.diesel));
+  };
+  // parseFloat, not the raw strings — localStorage hands back "46", the array holds 46.
+  // Every figure is one decimal place at most, so float equality stays exact.
+  function syncPresets(){
+    const mpg = parseFloat($("mpg").value), tank = parseFloat($("tank").value);
+    for (const b of presetBtns){
+      const p = PRESETS[b.dataset.preset];
+      b.setAttribute("aria-pressed", String(!!p && presetMpg(p) === mpg && p.tank === tank));
+    }
+  }
+  for (const b of presetBtns) b.addEventListener("click", () => {
+    const p = PRESETS[b.dataset.preset];
+    if (!p) return;
+    const mpg = presetMpg(p);
+    // Both values first, THEN the events — otherwise the save listener fires on a car
+    // that is half this preset and half the last one.
+    $("mpg").value = String(mpg);
+    $("tank").value = String(p.tank);
+    for (const id of ["mpg","tank"])
+      for (const type of ["input","change"])
+        $(id).dispatchEvent(new Event(type, {bubbles: true}));
+    syncPresets();
+    $("presetSaid").textContent = `Filled in typical figures: ${mpg} mpg, ${p.tank} litre tank.`;
+  });
+  // Re-derive on every path that can change the pair, or change which variant applies.
+  // On "input", not just "change": the chip must go dark mid-keystroke, not on blur.
+  $("mpg").addEventListener("input", syncPresets);
+  $("tank").addEventListener("input", syncPresets);
+  $("fuel").addEventListener("change", syncPresets);
+  syncPresets();   // after the CAR_KEY restore above, so a remembered car lights its chip
 
   loadStations().then(showFreshness);
 

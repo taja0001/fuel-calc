@@ -5,6 +5,52 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ---
 
+## 2026-08-24 (later still)
+
+**Car presets — six chips for the people who don't know their mpg.** "What's your
+fuel economy?" was the app's biggest ask of a stranger: most people genuinely don't
+know, and the unsure ones assumed guessing wrong would break the answer. A row of
+chips at the top of "Your car" — Small car, Family hatchback, SUV, 4x4 / big SUV,
+Hybrid, Van — fills the mpg and tank in one tap, under a line that pre-forgives the
+imprecision: *"Not sure about the numbers? Tap the closest match — you can tweak them
+after."*
+
+**The figures are owner-reported, not brochure.** Every economy number is a
+real-world average (Honest John Real MPG per engine variant, corroborated against
+Fuelly), never WLTP, which flatters by 10–25%. A Fiesta 1.0T averages 44.4 in owners'
+hands, not the 53 on the sticker. No further discount is applied — the gap is already
+in the number. Sources per row live in `plans/car-presets.md`.
+
+**Each chip knows both fuels.** One figure per body style would be ~20% out for half
+the country, and in journey mode that error moves which forecourts are *reachable*,
+not just the pennies. Tapping Small car fills 46 mpg on unleaded and 58 on diesel.
+The chip never touches the fuel dropdown and a later fuel change never rewrites the
+mpg — the chip quietly going dark is the honest nudge instead.
+
+**The highlight is derived, never stored.** A chip is lit if and only if the fields
+currently hold its exact pair, so hand-editing the mpg un-lights it on the keystroke.
+There is no selection state to persist, desync, or lie about — the same idiom the fuel
+gauge already used. The tap fires real `input` and `change` events rather than only
+assigning `.value`, which is what keeps the "~N L to fill" readout honest and lets the
+car save itself; a bare `.value` write fires nothing.
+
+**The default mpg moved 45 → 46**, so a first visit truthfully lights Family
+hatchback. A lit chip on arrival teaches what the chips do better than any copy could.
+Two tests were reading the old 45 as a literal; they now read the value off the page,
+because that default is a product decision and has now moved once.
+
+Three new browser tests (51 green): a tap fills both fields and moves the litres
+readout, the pair survives a reload with the chip re-derived against the restored
+fuel, and no two chips can share a mpg+tank pair in either fuel — a collision would
+light two chips with no way to tell them apart. No service-worker version bump: an
+ordinary shell edit.
+
+Deliberately not built: a motorbike chip (real mpg spans 30–130, and a ~14 L tank
+makes forecourt differences pennies, against the app's own premise) and a make/model
+database (megabytes against a watched payload, for a job six chips do).
+
+---
+
 ## 2026-08-24 (later)
 
 **The four consensus wins from the nine-critic UX review.** Nine independent

@@ -179,10 +179,22 @@ adds one.
    succeeding also re-confirms that branch protection permits the Pi's direct push.
    *If the Pi is ever re-cloned after an SD-card rebuild, check this again — a
    repo-local `user.email` would not survive; `--global` on the Pi would.*
-3. ⬜ **Now unblocked** — enable GitHub's "Block command line pushes that expose my
-   email" (Settings → Emails). Safe as of 24 Aug 22:01: both committers are clean, so
-   nothing will be rejected. Confirm "Keep my email addresses private" is on while
-   you're there — the block-pushes setting depends on it.
+3. ✅ **DONE 24 Aug — the toggle is live, proven by watching it block.** Building a
+   throwaway commit authored with the old `@outlook.com` address and pushing it to a
+   scratch branch was refused outright:
+   ```
+   remote: error: GH007: Your push would publish a private email address.
+    ! [remote rejected] ... (push declined due to email privacy restrictions)
+   ```
+   No branch was created; `main` was never a push target. Because GH007 only fires
+   when the address is registered as **private** on the account, this single test
+   also confirms "Keep my email addresses private" is on — which the plan otherwise
+   had no way to check (a `gh` token needs the `user` scope to read it).
+
+**Item 3 is therefore closed end to end: Mac, Pi, and the server-side backstop.** The
+backstop matters more than it looks — it is the safety net for the one regression this
+list flagged as plausible, a Pi re-clone after an SD-card rebuild silently reverting to
+the old identity. That push would now be rejected rather than quietly leaking.
 
 **Why the order matters:** step 3 makes GitHub *reject* any push containing commits
 that expose the real address. Enable it while the Pi is still committing as

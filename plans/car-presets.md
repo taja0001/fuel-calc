@@ -2,9 +2,27 @@
 
 Written **2026-08-24**, researched against the real code, real UK owner-reported
 economy data, and the design space (three-agent pass; sources named per figure below).
-**Status: planned, not built.** "What's your mpg?" is the app's biggest ask of a
-stranger — most people don't know, and the unsure ones fear that guessing wrong breaks
-the answer. One tap should fix both.
+**Status: BUILT 2026-08-24** — shipped as planned, all seven design decisions honoured.
+Kept as the record of *why* each figure and decision is what it is; the figures table
+below is still the source of truth if they ever need updating.
+
+Two deviations from the letter of the plan, both recorded here rather than rediscovered:
+
+- **The chips live inside `#carDetails`, not directly under the `<h2>`.** The folded
+  remembered-car summary shipped between the plan being written and the build, so a
+  returning visitor sees the one-liner and gets the chips on *Change* — which is right:
+  someone with a saved car has already answered the question the chips exist to ask.
+- **The announcement got its own visually-hidden live region (`#presetSaid`)** rather
+  than the "existing polite live region". The only existing one is `#msg`, which is the
+  search-status slot and renders a visible notice box — noise on top of inputs that
+  already visibly changed, and it would be wiped by the next search. One `.sr-only`
+  rule was the cheaper honest answer. Decision 5's "one new CSS rule" became four: the
+  flex override, horizontal padding on the chips (`.seg` ships `padding:10px 0`, which
+  reads fine for "¼" and touches the border for "Family hatchback"), the hint line, and
+  `.sr-only`.
+
+"What's your mpg?" is the app's biggest ask of a stranger — most people don't know, and
+the unsure ones fear that guessing wrong breaks the answer. One tap should fix both.
 
 ## What it is
 

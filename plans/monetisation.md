@@ -100,6 +100,42 @@ the split-repo idea ever happens, generated pages live on the public side.
 *This is a proper project, not an afternoon. But it's the difference between 100 visitors
 a day and a number where monetisation is a real conversation.*
 
+### Growth beyond SEO — added 2026-08-25
+
+All sequenced after the domain ([domain-migration.md](domain-migration.md)) for the same
+permanent-links reason as everything else. Cheapest-per-visitor first:
+
+- **Make results shareable — the word-of-mouth engine.** Backlog #3 (shareable URLs)
+  reframed: it isn't a convenience feature, it's the growth feature. A "share this"
+  button using the native share sheet turns every "I saved £4" into a link in a family
+  group chat — and *other people* sharing the app is the one MSE-legal route
+  ([forum-launch.md](forum-launch.md) §3). The OG tags are already done; this is the
+  other half, plus one button.
+- **One launch post each on Show HN, r/InternetIsBeautiful, Product Hunt.** The app is
+  exactly what those audiences celebrate: free, clean, no ads, real data. The dev-side
+  story ("every UK fuel price, hourly, in git, from a Raspberry Pi — because the
+  government API only accepts residential IPs") is genuinely unusual and does the work
+  by itself. Fine under a pseudonym; needs the repo-visibility decision made first,
+  since dev audiences will go looking for the repo.
+- **The archive as a PR engine.** The newsletter/digest (More routes §4) doubles as
+  this: journalists writing fuel-price stories need numbers with history, and nobody
+  else has hourly. React fast to news cycles (duty changes, price spikes) with a chart
+  and a quote — every citation is a link. Data-journalism pitches to the money pages
+  beat any advertising the app could buy.
+- **Creator outreach.** UK money-saving and car-cost YouTubers/TikTokers cover free
+  tools readily — free + no-ads + no-signup makes the pitch trivial. One mid-sized
+  video outdraws months of forum posts. A short list of who covers fuel prices, one
+  honest email each.
+- **Get into the listicles.** "Best fuel price apps UK" articles exist and rank
+  (MSE's own guide included). Post-domain, email each author — being the only entry
+  that's free with no ads and no signup is the differentiator they'll quote.
+- **Search-engine hygiene at migration time.** Submit the new domain to Google Search
+  Console and Bing Webmaster with the sitemap when it exists — costs nothing, and GSC's
+  query data feeds the town-page tiering above.
+- **Retention is also traffic.** Saved home/work postcodes (backlog #1) and the
+  installed-PWA path turn one-time forum visitors into weekly habits — the same work
+  that serves daily users compounds every acquisition idea above.
+
 ---
 
 ## A domain of its own
@@ -177,6 +213,57 @@ price. See [price-history-plan.md](price-history-plan.md).
 
 ---
 
+## More routes — added 2026-08-25
+
+The four routes in the traffic-worth table monetise *traffic*, which doesn't exist yet.
+These monetise the **archive** or the **trust**, which do. Roughly nearest-first:
+
+1. **Native referrals that are also honest UX — the Costco move.** Costco fuel is
+   routinely among the cheapest in a town, already appears in the rankings, and is
+   members-only — which the app doesn't currently say. A "membership required" pill on
+   those rows is a genuine UX improvement *and* the natural home for a referral link.
+   Unlike insurance/breakdown affiliates (intent-adjacent), this sits exactly on the
+   user's intent at the moment of decision. Same pattern later for EV charging networks.
+   The only route on this list that makes the product better.
+2. **A tip jar.** One footer line (Ko-fi or similar). Pennies, but it fits the
+   "free, no catch" forum positioning exactly — the MSE crowd rewards it — and it's a
+   live measure of goodwill before pricing anything. Note the footer-disclosure ruling
+   (2026-08-24) was about privacy copy, not this; still Thomas's call to add any footer line.
+3. **Price-drop alerts as the premium wedge.** The table above dismisses premium because
+   "the free version already answers the question" — but alerts answer a *different*
+   question: not "where is cheapest" but "**should I fill today or wait**". That's
+   exactly what PetrolPrices' paid tier sells. The analytical half is part-built (the
+   history pipeline, badges, the calibrated ends comparison); the delivery half needs a
+   contact channel and a Worker, both now rehearsed. £1/month needs only hundreds of
+   subscribers to beat every consumer route in the table.
+4. **The weekly digest, grown into a sponsorable newsletter.** The counter's Phase 2
+   digest ([search-counter.md](search-counter.md)) pointed at the *archive* instead:
+   "UK fuel this week" — movement, rocket-and-feather watch, cheapest regions. Nobody
+   else can write it, because nobody else has the hourly history. Newsletters take a
+   single flat-fee sponsor line at small audiences, and every journalist citation is
+   free marketing for the app. Converts the archive to money without selling it.
+5. **Licensing to local news.** Local outlets hand-write "cheapest petrol in X" pieces
+   constantly because they draw local search traffic. A licensed daily widget or feed
+   per town is the SEO-page content sold to people who already prove they want it.
+   One title at £50–100/month beats a year of display ads. Pitch once our own town
+   pages exist as the demo.
+6. **Direct local sponsorship on town pages.** The "not worth the interface" verdict
+   above was about programmatic display. One flat-fee line — "supported by [local
+   garage]" — per town page is a different animal: no tracking, no auction, keeps the
+   clean UI. Gated on the SEO pages existing.
+7. **The true-cost API** — selling the *algorithm*, not the data: ranking-as-a-service
+   for fleet software and fuel-card apps. A different SKU from the data feed above.
+   Hard-gated on replacing OSRM ([backlog.md](backlog.md) #0).
+8. **The endgame variant: acquisition.** The archive + traffic + trust is an acquirable
+   asset (comparison sites, fuel-card companies, PetrolPrices-class apps). Not revenue,
+   but it's what makes "do nothing and let the history accumulate" a strategy.
+
+**Rejected, on purpose:** sponsored placement in the rankings (one paid reorder kills
+the app's reason to exist), selling user data (there is none, by design — and that
+absence is a selling point for everything above), a paid app.
+
+---
+
 ## Decision points
 
 1. **Do nothing yet** and let the history accumulate — the lowest-effort route to the
@@ -187,3 +274,8 @@ price. See [price-history-plan.md](price-history-plan.md).
 
 Not mutually exclusive. Option 2 is the one worth real thought; option 1 happens by
 itself as long as the Pi keeps running.
+
+*2026-08-25 addendum: "More routes" above adds the archive- and trust-based options
+(Costco referral, alerts, newsletter, local-news licensing) that sit between options 1
+and 3, and "Growth beyond SEO" adds the acquisition levers (share button, launch posts,
+PR, creators) that feed option 2 without waiting for it.*

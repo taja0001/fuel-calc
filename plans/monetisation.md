@@ -117,6 +117,25 @@ permanent-links reason as everything else. Cheapest-per-visitor first:
   government API only accepts residential IPs") is genuinely unusual and does the work
   by itself. Fine under a pseudonym; needs the repo-visibility decision made first,
   since dev audiences will go looking for the repo.
+
+  **The launch-site shortlist** (landscape checked 2026-08-25 — these churn, re-verify
+  at launch time). Two tiers, honestly labelled: the first gives real humans, the
+  second gives permanent dofollow backlinks — which for this app are not a consolation
+  prize but the domain-authority seed the town pages will rank on.
+
+  | Tier | Where | Fit note |
+  |---|---|---|
+  | Humans | **Show HN** | Strongest fit; the Pi/git-archive story is the draw. Global audience reads for the story. |
+  | Humans | **r/InternetIsBeautiful**, **r/SideProject** | Built for free/no-signup tools; read each sub's self-promo rules, disclose, participate first. |
+  | Humans | **Product Hunt** | US-heavy — expect the badge and backlink more than UK users. One tidy launch day. |
+  | Humans | **Indie Hackers** | Community, not launchpad; the build story fits its genre. Compounds if milestones get shared. |
+  | Backlinks | **AlternativeTo** | The keeper: get listed as a PetrolPrices alternative — a comparison people actually search. |
+  | Backlinks | Uneed, Fazier, Smol Launch, TinyLaunch, MicroLaunch, Launching Next, SaaSHub | Current crop of free-submission directories, ~15 min each, mostly permanent dofollow links. |
+
+  Skip: BetaList (pre-launch only), DevHunt (dev tools), G2/Capterra (B2B). **Stagger
+  the launches a week or more apart** — each spike then shows up separately in the
+  search counter's district data, so the venues can be compared on searches actually
+  run, not impressions claimed.
 - **The archive as a PR engine.** The newsletter/digest (More routes §4) doubles as
   this: journalists writing fuel-price stories need numbers with history, and nobody
   else has hourly. React fast to news cycles (duty changes, price spikes) with a chart

@@ -916,6 +916,14 @@
     document.querySelectorAll(".mode-btn").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
     $("panelNear").hidden = mode !== "near";
     $("panelJourney").hidden = mode !== "journey";
+    // The button names the job per mode, and an empty readout says what journey mode
+    // uniquely answers — the trip price. Nothing pre-search ever mentioned it, so the
+    // app's most distinctive answer was invisible until after someone happened to ask.
+    $("search").textContent = mode === "journey" ? "Price this journey" : "Find the cheapest fill-up";
+    if (document.querySelector(".readout").classList.contains("empty"))
+      $("bestSub").textContent = mode === "journey"
+        ? "Says what the whole trip costs in fuel, and where on the route to stop."
+        : "One postcode is all it needs — the car details below are already filled in.";
     setMsg("");
   }));
 
@@ -1210,6 +1218,10 @@
 
         render(rows, {fuel, litresFill, mode:"journey", found: usable.length, notes, trip, ends});
         countSearch("ok");
+        // Remember the search (device-only, same rule as the car) — the daily user was
+        // retyping the same route every visit. Prefilled on the next load, never re-run.
+        try { localStorage.setItem(LAST_KEY, JSON.stringify(
+          {mode: "journey", start: startPc, dest: destPc, off: $("offRoute").value})); } catch {}
         return;
       }
 
@@ -1268,6 +1280,10 @@
 
       render(rows, {fuel, litresFill, radius, mode:"near", found: cand.length, notes: nearNotes});
       countSearch("ok");
+      // Remember the search (device-only) — but only a typed postcode: a GPS search
+      // saves just the radius, so nothing about location ever persists from 📍.
+      try { localStorage.setItem(LAST_KEY, JSON.stringify(
+        pc ? {mode: "near", pc, r: radius} : {mode: "near", r: radius})); } catch {}
     } catch(e){
       // esc() wraps the WHOLE expression: a 2xx non-JSON reply from postcodes.io
       // throws a SyntaxError quoting response bytes, and setMsg is an innerHTML
@@ -1277,7 +1293,8 @@
     } finally {
       searching = false;
       if (restoreReadout) { restoreReadout(); restoreReadout = null; }
-      btn.disabled = false; btn.textContent = "Find the cheapest fill-up";
+      btn.disabled = false;
+      btn.textContent = mode === "journey" ? "Price this journey" : "Find the cheapest fill-up";
       // The queued search reads the form as it is NOW, so it reflects every change
       // that arrived while the last one was in flight — one re-run covers them all.
       if (queued) { queued = false; run(); }
@@ -1463,6 +1480,7 @@
            ${moved ? `<span class="pill ${moved.cls}">${moved.text}</span>` : ''}
            ${moved && moved.low ? '<span class="pill low">week low</span>' : ''}
            ${r.s.mw ? '<span class="pill mway">Motorway services</span>' : ''}
+           ${/costco/i.test(r.s.brand || "") ? '<span class="pill mway">Costco — members only</span>' : ''}
          </div>
          <div class="st-cost">
            <div class="total">${gbp(r.total)}</div>
@@ -1550,7 +1568,8 @@
              <span class="sp"><span>${gbp(r.total)}</span>
                <a class="dir" target="_blank" rel="noopener noreferrer" title="Directions">🧭</a></span>`;
           ss.querySelector(".sn").textContent =
-            `${label(r.s)} · ${r.price.toFixed(1)}p · ${r.dist.toFixed(1)} mi${r.shut ? " · closed" : ""}`;
+            `${label(r.s)} · ${r.price.toFixed(1)}p · ${r.dist.toFixed(1)} mi${r.shut ? " · closed" : ""}` +
+            `${/costco/i.test(r.s.brand || "") ? " · members only" : ""}`;
           ss.querySelector(".dir").href =
             `https://www.google.com/maps/dir/?api=1&destination=${r.s.lat},${r.s.lng}&travelmode=driving`;
           sub.appendChild(ss);
@@ -1613,7 +1632,11 @@
 
   // Remember your car on THIS device only. Saved in your browser's localStorage —
   // never uploaded, never in the repo, invisible to anyone else who visits the site.
+  // LAST_KEY remembers the last search the same way: prefill on the next visit, never
+  // auto-run — a search spends the user's data and GPS consent, so it stays behind
+  // the button. A GPS search stores no location at all, only the radius.
   const CAR_KEY = "fillup_car_v1";
+  const LAST_KEY = "fillup_last_v1";
   try {
     const c = JSON.parse(localStorage.getItem(CAR_KEY) || "null");
     if (c) {
@@ -1622,6 +1645,23 @@
       if (c.fuel) $("fuel").value = c.fuel;
       setLevel(level);   // the litres-to-fill readout was computed from the default tank
       foldCar();
+    }
+  } catch {}
+  // The remembered search, restored into the form. If it was a journey, the journey
+  // tab is activated via its real click handler so the panels, button label and
+  // aria-pressed state all follow the one code path.
+  try {
+    const last = JSON.parse(localStorage.getItem(LAST_KEY) || "null");
+    if (last) {
+      if (last.mode === "journey"){
+        if (last.start) $("startPc").value = last.start;
+        if (last.dest) $("destPc").value = last.dest;
+        if (last.off) $("offRoute").value = last.off;
+        document.querySelector('.mode-btn[data-mode="journey"]').click();
+      } else {
+        if (last.pc) $("postcode").value = last.pc;
+        if (last.r) $("radius").value = last.r;
+      }
     }
   } catch {}
   $("carChange").addEventListener("click", () => {

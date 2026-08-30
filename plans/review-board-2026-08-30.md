@@ -68,6 +68,14 @@ stranger's first run, feature gaps, trust — every finding cited against real l
 
 ## Features
 
+> Previewed 2026-08-31 ("features pass" artifact); **items 14, 15 and 17 shipped
+> 2026-08-31** — with journey-mode coverage for 14 (the preview was near-only) and a
+> privacy rule the preview lacked: **a GPS search saves the radius but never any
+> location**, pinned by a test. Items 13, 16 and 18 remain open: 13 works and fired on
+> live data at preview (diesel +1.6p/fortnight) but carries an unanswered placement
+> question — readout (shown, near capacity) vs under the trend chart; 16 previewed
+> fine; 18 was posed only and depends on 14 (now shipped).
+
 13. **"Fill today or wait."** The trend data already on every page, converted into the
     one decision every visitor faces. In the chart's `draw()`, compute the 14-day move
     for the selected grade; after a search, when |move| × litresFill clears ~50p, one

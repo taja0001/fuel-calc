@@ -5,6 +5,38 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ---
 
+## 2026-08-31
+
+**Three features from the board's previewed batch** (items 14, 15, 17; picked from the
+"features pass" artifact — 13, 16, 18 stay open):
+
+**The last search is remembered** (14). Postcode and radius — or the whole journey:
+start, destination, detour, with the journey tab restored through its real click
+handler — prefilled on the next visit from localStorage, device-only, same rule as the
+car. Never auto-run: a search spends data and GPS consent, so it stays behind the
+button. **A GPS search saves the radius but no location at all** — nothing about where
+you are persists from 📍, and a test pins that.
+
+**Costco rows say "members only"** (15). 22 Costco forecourts are routinely the
+cheapest in their area and would win the ranking — and a stranger driving there gets
+turned away at the barrier, which reads as the app's mistake. A neutral pill in the
+motorway-services idiom on ranked rows, "· members only" in the brand sub-lists.
+Flagged, never hidden — the closed-rows philosophy.
+
+**Journey mode introduces itself** (17). The button reads "Price this journey" in
+journey mode (including after searches — the reset in `finally` is mode-aware), and an
+empty readout says what the mode uniquely answers: "Says what the whole trip costs in
+fuel, and where on the route to stop."
+
+Two test notes. The remembered-search prefill broke two tests that tap search
+expecting an empty-postcode error — the field was no longer empty, which is the
+feature working; they now clear-and-reload first. And the fuel-rerun test's
+"text changed" wait could fire on the searching self-test's blank and read it — the
+same race the mid-search test already solved — so it now waits for the B7 figure
+itself. (63 tests green, run twice for flake confidence.)
+
+---
+
 ## 2026-08-30 (later)
 
 **Four fixes from the same review's user-friendly batch** (board items 7, 9, 10, 11 —

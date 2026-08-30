@@ -360,13 +360,13 @@ test("changing fuel type re-runs the search without pressing the button", async 
   await page.locator("#search").click();
   await page.waitForFunction(() =>
     document.getElementById("bestSub").textContent.includes("@"), null, { timeout: 15000 });
-  const before = await page.evaluate(() => document.getElementById("bestSub").textContent);
   await setFuel("B7");                                    // fires the change event
-  await page.waitForFunction(b =>
-    document.getElementById("bestSub").textContent !== b, before, { timeout: 15000 });
-  const after = await page.evaluate(() => document.getElementById("bestSub").textContent);
-  // cheapest open E10 is 140.0; its B7 is 152.0 — the headline must now quote a B7 price
-  assert.match(after, /@ 152\.0p/, "headline reprices to the diesel figure");
+  // Wait for the B7 figure itself, not "text changed": the searching self-test blanks
+  // bestSub the instant the rerun starts, so a changed-text wait can fire on the blank
+  // and read it — the same race the mid-search test solves with a MutationObserver.
+  // cheapest open E10 is 140.0; its B7 is 152.0 — the headline must quote a B7 price.
+  await page.waitForFunction(() =>
+    document.getElementById("bestSub").textContent.includes("@ 152.0p"), null, { timeout: 15000 });
 });
 
 test("the search counter: a 📍 search says gps and nothing more; no beacon ever carries precision", async () => {
@@ -398,6 +398,8 @@ test("a failed search restores the readout — eights never survive the self-tes
   // previous reading back, or a typo leaves fabricated eights in the flagship slot.
   const p = await page.context().newPage();
   await p.goto(base + "/index.html", { waitUntil: "load" });
+  await p.evaluate(() => localStorage.clear());     // a remembered search would prefill
+  await p.reload({ waitUntil: "load" });            // the postcode and defeat the test
   const grab = () => p.evaluate(() => ({
     total: document.getElementById("bestTotal").textContent,
     where: document.getElementById("bestWhere").textContent,
@@ -530,6 +532,7 @@ test("errors appear at the button, not below the car card", async () => {
   const p = await page.context().newPage();
   await p.goto(base + "/index.html", { waitUntil: "load" });
   await p.evaluate(() => localStorage.clear());
+  await p.reload({ waitUntil: "load" });                    // clear the remembered prefill
   await p.locator("#search").click();                       // empty postcode
   await p.waitForFunction(() =>
     document.getElementById("msg").textContent.includes("postcode"), null, { timeout: 5000 });
@@ -611,6 +614,116 @@ test("the first successful search folds the car card — unless Change was press
     !document.getElementById("search").disabled, null, { timeout: 15000 });
   assert.ok(await p.locator("#carDetails").isVisible(), "a rerun never folds against Change");
   await p.close();
+});
+
+// --- the features batch (review-board items 14 / 15 / 17) ---------------------------
+
+test("the last search is remembered — prefilled on return, never re-run", async () => {
+  const p = await page.context().newPage();
+  await p.goto(base + "/index.html", { waitUntil: "load" });
+  await p.evaluate(() => localStorage.clear());
+  await p.locator("#postcode").fill("NG1 5FS");
+  await p.locator("#search").click();
+  await p.waitForFunction(() =>
+    document.querySelectorAll("#results .station").length > 0, null, { timeout: 15000 });
+  await p.reload({ waitUntil: "load" });
+  assert.equal(await p.locator("#postcode").inputValue(), "NG1 5FS", "postcode remembered");
+  assert.equal(await p.locator("#radius").inputValue(), "8", "radius remembered");
+  await new Promise(r => setTimeout(r, 800));
+  assert.equal(await p.evaluate(() => document.querySelectorAll("#results .station").length), 0,
+    "prefilled, never auto-run — a search stays behind the button");
+  await p.evaluate(() => localStorage.clear());
+  await p.close();
+});
+
+test("a GPS search remembers the radius but never the location", async () => {
+  const p = await page.context().newPage();
+  await p.goto(base + "/index.html", { waitUntil: "load" });
+  await p.evaluate(() => localStorage.clear());
+  await p.locator("#useGps").click();
+  await p.locator("#search").click();
+  await p.waitForFunction(() =>
+    document.querySelectorAll("#results .station").length > 0, null, { timeout: 15000 });
+  const saved = await p.evaluate(() => JSON.parse(localStorage.getItem("fillup_last_v1")));
+  assert.equal(saved.mode, "near");
+  assert.equal(saved.pc, undefined, "no location key at all after a GPS search");
+  assert.ok(saved.r, "the radius is still remembered");
+  await p.evaluate(() => localStorage.clear());
+  await p.close();
+});
+
+test("a remembered journey restores the tab, the fields and the button", async () => {
+  const p = await page.context().newPage();
+  await p.goto(base + "/index.html", { waitUntil: "load" });
+  await p.evaluate(() => localStorage.clear());
+  await p.locator('.mode-btn[data-mode="journey"]').click();
+  await p.evaluate(() => {
+    document.getElementById("startPc").value = "NG1 1AA";
+    document.getElementById("destPc").value = "ZZ9 9ZZ";
+  });
+  await p.locator("#search").click();
+  await p.waitForFunction(() =>
+    document.querySelectorAll("#results .station").length > 0, null, { timeout: 15000 });
+  await p.reload({ waitUntil: "load" });
+  assert.equal(await p.locator('.mode-btn[data-mode="journey"]').getAttribute("aria-pressed"), "true",
+    "the journey tab is active again");
+  assert.equal(await p.locator("#startPc").inputValue(), "NG1 1AA");
+  assert.equal(await p.locator("#destPc").inputValue(), "ZZ9 9ZZ");
+  assert.equal((await p.locator("#search").textContent()).trim(), "Price this journey");
+  await p.evaluate(() => localStorage.clear());
+  await p.close();
+});
+
+test("journey mode introduces itself: button text and the empty-readout promise", async () => {
+  const p = await page.context().newPage();
+  await p.goto(base + "/index.html", { waitUntil: "load" });
+  await p.evaluate(() => localStorage.clear());
+  await p.locator('.mode-btn[data-mode="journey"]').click();
+  assert.equal((await p.locator("#search").textContent()).trim(), "Price this journey");
+  assert.match(await p.locator("#bestSub").textContent(),
+    /whole trip costs in fuel/, "the empty readout says what this mode answers");
+  await p.locator('.mode-btn[data-mode="near"]').click();
+  assert.equal((await p.locator("#search").textContent()).trim(), "Find the cheapest fill-up");
+  assert.match(await p.locator("#bestSub").textContent(), /One postcode is all it needs/,
+    "switching back restores the near-me line");
+  await p.close();
+});
+
+// One Costco in the fixture, open and cheap — its row must carry the warning.
+const WITH_COSTCO = JSON.stringify({
+  generated_at: new Date(FIXED - 30 * 60000).toISOString(),
+  count: STATIONS.length + 1,
+  stations: [...STATIONS, S("COSTCO NOTTINGHAM", "COSTCO WHOLESALE", at(1.5, 0.1), 141.0)],
+});
+
+test("Costco rows say members only — flagged, never hidden", async () => {
+  const pattern = "**/data/prices.json";
+  const serve = r => r.fulfill({ contentType: "application/json", body: WITH_COSTCO });
+  await page.context().route(pattern, serve);
+  const p = await page.context().newPage();
+  await p.clock.setFixedTime(FIXED);
+  try {
+    await p.goto(base + "/index.html", { waitUntil: "load" });
+    await p.evaluate(() => localStorage.clear());
+    await p.locator("#postcode").fill("NG1 5FS");
+    await p.locator("#search").click();
+    await p.waitForFunction(() =>
+      document.querySelectorAll("#results .station").length > 0, null, { timeout: 15000 });
+    const costco = await p.evaluate(() => {
+      const row = [...document.querySelectorAll("#results .station")]
+        .find(r => /costco/i.test(r.querySelector(".brand").textContent));
+      return row ? {
+        pills: [...row.querySelectorAll(".pill")].map(x => x.textContent),
+        ranked: true,
+      } : null;
+    });
+    assert.ok(costco, "the Costco row is listed, not hidden");
+    assert.ok(costco.pills.some(t => /Costco — members only/.test(t)),
+      "and carries the members-only pill");
+  } finally {
+    await p.close();
+    await page.context().unroute(pattern, serve);
+  }
 });
 
 // --- car presets -------------------------------------------------------------------

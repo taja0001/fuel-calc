@@ -5,6 +5,40 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ---
 
+## 2026-08-30 (later)
+
+**Four fixes from the same review's user-friendly batch** (board items 7, 9, 10, 11 —
+each previewed as a before/after artifact and picked by Thomas; 8 and 12 previewed and
+still open):
+
+**Errors appear at the button** (7). `#msg` moved from below the entire car card — a
+measured 1,226px down an 844px first screen — to directly under the search button, with
+a `scrollIntoView` in `setMsg` as belt-and-braces. The app no longer looks dead on a
+stranger's most likely first tap.
+
+**No results, in the user's own fuel** (9). "No forecourts with B7P prices within that
+radius. Try a bigger radius." → "No forecourts selling premium diesel within 8 miles.
+Try widening the search." — `FUEL_WORD` hoisted to module scope so the message can reach
+it. The readout says "Nothing found" with a what-to-do sub-line instead of a blank. The
+radius pluralises ("1 mile") — the preview's first draft reproduced the old "1 miles"
+bug and got caught.
+
+**The headline admits the winner is closed** (10). At 3am every forecourt can be shut
+and rows[0] is still the right plan for the morning — but the readout crowned it without
+comment while the caveat sat in the notice pile. Now the same dashed pill the stale
+price earned: "closed — opens tomorrow 06:00", from the per-row `opensAt` logic.
+
+**A successful search folds the car card** (11). First-timers got the verdict, then
+~600px of untouched form, and were never told the ranked rows existed below. The fold
+that returning visitors already get now happens at the end of any successful render —
+never against the user's hand: pressing Change pins the card open for the session. The
+fuel gauge stays outside the fold, matching the existing behaviour.
+
+Test note: folding hides the fuel select, so shared-page tests now press Change before
+switching fuel — exactly what a user does. Four new tests cover the batch (58 green).
+
+---
+
 ## 2026-08-30
 
 **Three fixes from the five-lens "does this look AI-made?" review** (fixes 4, 5 and 6 of

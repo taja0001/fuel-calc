@@ -352,6 +352,11 @@
        card. Defaults make the car card optional reading, and queuing the only action
        behind it put the button at 1007px on an 844px first screen. -->
   <button class="btn block" id="search" type="button">Find the cheapest fill-up</button>
+  <!-- Directly under the button: the stranger's most likely first act is tapping search
+       with an empty postcode, and the answer must appear where they're looking. It sat
+       below the entire car card — 1,226px down an 844px first screen, measured — so the
+       app looked dead on its most likely first tap. -->
+  <div id="msg" aria-live="polite"></div>
 
   <div class="card">
     <h2>Your car</h2>
@@ -430,7 +435,6 @@
     </div>
   </div>
 
-  <div id="msg" aria-live="polite"></div>
   <div class="results" id="results"></div>
 
   <figure id="trend" hidden>
@@ -775,6 +779,10 @@
   }
   function setMsg(html, warn){
     $("msg").innerHTML = html ? `<div class="notice${warn?' warn':''}">${html}</div>` : "";
+    // Belt and braces for viewports shorter than the fold or a page scrolled elsewhere
+    // (journey mode's second field pushes the button down): a message nobody can see
+    // is a message that wasn't shown.
+    if (html) $("msg").scrollIntoView({block: "nearest"});
   }
 
   async function loadStations(force){
@@ -1276,16 +1284,27 @@
     }
   }
 
+  // Name the fuel. Nothing on the results screen said which grade the numbers were
+  // for, so a diesel regular re-checked the dropdown before believing any of them.
+  // Module-scope because the no-results message needs it before render's early return.
+  const FUEL_WORD = { E10: "unleaded", E5: "super unleaded", B7: "diesel", B7P: "premium diesel" };
+
   function render(rows, ctx){
     restoreReadout = null;   // render paints the truth; nothing to put back
     const res = $("results");
     if (!rows.length){
-      setMsg("No forecourts with " + ctx.fuel + " prices " + (ctx.mode === "journey" ? "near your route. Try a bigger detour." : "within that radius. Try a bigger radius."), true);
+      // The user's fuel in words, not the feed's grade code — "premium diesel", never
+      // "B7P". And no "radius… radius" repetition.
+      const fw = FUEL_WORD[ctx.fuel] || ctx.fuel;
+      setMsg(ctx.mode === "journey"
+        ? `No forecourts selling ${fw} within reach of your route. A bigger detour might.`
+        : `No forecourts selling ${fw} within ${ctx.radius} mile${ctx.radius == 1 ? "" : "s"}. Try widening the search.`, true);
       res.innerHTML = "";
-      // Dashes, not £0.00 — zero is exactly the wrong reading next to "No results".
+      // Dashes, not £0.00 — zero is exactly the wrong reading next to "Nothing found".
       document.querySelector(".readout").classList.add("empty");
       $("bestTotal").textContent = "£--.--";
-      $("bestWhere").textContent = "No results"; $("bestSub").textContent = "";
+      $("bestWhere").textContent = "Nothing found";
+      $("bestSub").textContent = "Widen the search or switch fuel — this fills in when something turns up.";
       $("bestSave").textContent = "";
       return;
     }
@@ -1311,20 +1330,24 @@
     $("bestWhere").textContent = label(best.s);
     const awayWord = ctx.mode === "journey" ? "off route" : "away";
     const tripWord = ctx.mode === "journey" ? "detour" : "trip";
-    // Name the fuel. Nothing on the results screen said which grade the numbers were
-    // for, so a diesel regular re-checked the dropdown before believing any of them.
-    const FUEL_WORD = { E10: "unleaded", E5: "super unleaded", B7: "diesel", B7P: "premium diesel" };
     const subText =
       `${ctx.litresFill.toFixed(1)} L of ${FUEL_WORD[ctx.fuel] || ctx.fuel} @ ${best.price.toFixed(1)}p · ${distTime(best)} ${awayWord} · fill ${gbp(best.fillCost)} + ${tripWord} ${gbp(best.tripCost)}`;
-    // The verdict carries the doubt: the winner's row admits a stale price below the
-    // fold, but the person who reads only the headline is the one who drives. Same
-    // dashed caveat, in the panel itself. subText is numbers and fixed words, but it
-    // goes through esc() anyway — this is an innerHTML sink and the invariant holds.
+    // The verdict carries the doubt: the winner's row admits a stale price — or being
+    // closed right now — below the fold, but the person who reads only the headline is
+    // the one who drives. Same dashed caveat, in the panel itself. At 3am every row can
+    // be shut and rows[0] is still the best plan for the morning; it just has to say so
+    // where it's read. subText is numbers and fixed words, but everything goes through
+    // esc() anyway — this is an innerHTML sink and the invariant holds.
     const bestAge = priceAgeDays(best.s, ctx.fuel);
     const bestStale = bestAge !== null && bestAge >= STALE_DAYS;
-    if (bestStale){
-      $("bestSub").innerHTML = esc(subText) +
-        ` <span class="pill old">price ${esc(ageWords(bestAge))} old</span>`;
+    const bestPills = [];
+    if (bestStale) bestPills.push(`<span class="pill old">price ${esc(ageWords(bestAge))} old</span>`);
+    if (best.shut){
+      const opens = opensAt(best.s, new Date());
+      bestPills.push(`<span class="pill old">closed${opens ? " — opens " + esc(opens) : ""}</span>`);
+    }
+    if (bestPills.length){
+      $("bestSub").innerHTML = esc(subText) + " " + bestPills.join(" ");
     } else {
       $("bestSub").textContent = subText;
     }
@@ -1566,7 +1589,26 @@
 
     // The headline updates ABOVE the viewport on a phone — the user taps search next
     // to the results and the big answer changes out of sight. Only scrolls if needed.
+    // A successful search is the signal the car details are settled: fold them to the
+    // one-line summary so the ranked rows land one flick below the verdict, instead of
+    // ~600px of form a first-timer was never told to scroll past. Never against the
+    // user's own hand — pressing Change pins the card open for the session.
+    if (!carUserExpanded) foldCar();
     document.querySelector(".readout").scrollIntoView({behavior: "smooth", block: "nearest"});
+  }
+
+  // The car folds to one line — the full controls sat between the answer and the rows,
+  // never touched. The inputs stay in the DOM (hidden), so every listener keeps
+  // working; Change just reveals them. Two callers: a localStorage restore on load, and
+  // the first successful search (the moment the details are evidently settled).
+  // Values are the user's own, but it's an innerHTML sink: esc().
+  let carUserExpanded = false;   // Change pressed this session — never fold against it
+  function foldCar(){
+    const opt = $("fuel").selectedOptions[0];
+    $("carSummaryText").innerHTML =
+      `<b>${esc($("mpg").value)} mpg</b> · <b>${esc($("tank").value)} L</b> · ${esc(opt ? opt.textContent : $("fuel").value)}`;
+    $("carDetails").hidden = true;
+    $("carSummary").hidden = false;
   }
 
   // Remember your car on THIS device only. Saved in your browser's localStorage —
@@ -1579,18 +1621,11 @@
       if (c.tank) $("tank").value = c.tank;
       if (c.fuel) $("fuel").value = c.fuel;
       setLevel(level);   // the litres-to-fill readout was computed from the default tank
-      // The remembered car folds to one line — the full controls sat between the
-      // answer and the rows on every visit, never touched. The inputs stay in the
-      // DOM (hidden), so every listener keeps working; Change just reveals them.
-      // Values are the user's own localStorage, but it's an innerHTML sink: esc().
-      const opt = $("fuel").selectedOptions[0];
-      $("carSummaryText").innerHTML =
-        `<b>${esc($("mpg").value)} mpg</b> · <b>${esc($("tank").value)} L</b> · ${esc(opt ? opt.textContent : $("fuel").value)}`;
-      $("carDetails").hidden = true;
-      $("carSummary").hidden = false;
+      foldCar();
     }
   } catch {}
   $("carChange").addEventListener("click", () => {
+    carUserExpanded = true;
     $("carSummary").hidden = true;
     $("carDetails").hidden = false;
     $("mpg").focus();

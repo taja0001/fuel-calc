@@ -185,6 +185,14 @@ const rows = () => page.evaluate(() =>
     meta: el.querySelector(".meta").textContent,
   })));
 
+// After the first successful search the car card folds to a summary (review-board
+// item 11), hiding the fuel select. Tests that switch fuel on the shared page do what
+// a user does: press Change first if the card is folded.
+const setFuel = async v => {
+  if (await page.locator("#carSummary").isVisible()) await page.locator("#carChange").click();
+  await page.selectOption("#fuel", v);
+};
+
 test("ranks by true cost: the cheap-but-far forecourt beats the dear-but-near one", async () => {
   const r = await rows();
   assert.equal(r.length, STATIONS.length, "every fixture station listed");
@@ -353,7 +361,7 @@ test("changing fuel type re-runs the search without pressing the button", async 
   await page.waitForFunction(() =>
     document.getElementById("bestSub").textContent.includes("@"), null, { timeout: 15000 });
   const before = await page.evaluate(() => document.getElementById("bestSub").textContent);
-  await page.selectOption("#fuel", "B7");                 // fires the change event
+  await setFuel("B7");                                    // fires the change event
   await page.waitForFunction(b =>
     document.getElementById("bestSub").textContent !== b, before, { timeout: 15000 });
   const after = await page.evaluate(() => document.getElementById("bestSub").textContent);
@@ -429,8 +437,8 @@ test("a fuel switch landing MID-search still takes effect once the search finish
           window.__subSeen.push(m.addedNodes[0] ? m.addedNodes[0].data : el.textContent);
       }).observe(el, { childList: true, characterData: true, subtree: true });
     });
-    await page.selectOption("#fuel", "E10");      // re-runs: results are on screen
-    await page.selectOption("#fuel", "B7");       // lands while that run awaits OSRM
+    await setFuel("E10");                         // re-runs: results are on screen
+    await setFuel("B7");                          // lands while that run awaits OSRM
     await page.waitForFunction(() =>              // the queued B7 run wins in the end
       document.getElementById("bestSub").textContent.includes("@ 152.0p"), null, { timeout: 15000 });
     const seen = await page.evaluate(() => window.__subSeen);
@@ -473,7 +481,7 @@ test("the price trend renders from the daily index, and follows the selected fue
   await page.waitForFunction(() => !document.getElementById("trend").hidden, null, { timeout: 10000 });
   // Fuel is set explicitly because earlier tests leave the select on B7 — the chart
   // following the select is the behaviour under test, so the start state can't be luck.
-  await page.selectOption("#fuel", "E10");
+  await setFuel("E10");
   const grab = () => page.evaluate(() => ({
     label: document.getElementById("trendSvg").getAttribute("aria-label"),
     title: document.getElementById("trendTitle").textContent,
@@ -491,7 +499,7 @@ test("the price trend renders from the daily index, and follows the selected fue
 
   // A diesel driver gets the diesel series, not a ~20p-off unleaded line (9-critic
   // review finding). The fixture's B7 runs 176.0->178.5, distinct from E10's 158->160.5.
-  await page.selectOption("#fuel", "B7");
+  await setFuel("B7");
   const d = await grab();
   assert.match(d.label, /UK average diesel/);
   assert.match(d.title, /UK average diesel/);
@@ -514,6 +522,95 @@ test("a failed refresh keeps the real stations instead of swapping in sample dat
   assert.equal(state.sampleNote, false, "no sample-data note");
   assert.ok(state.rows > 0, "results still on screen");
   await page.context().unroute("**/data/prices.json");
+});
+
+// --- the stranger batch (review-board 2026-08-30, items 7 / 9 / 10 / 11) ------------
+
+test("errors appear at the button, not below the car card", async () => {
+  const p = await page.context().newPage();
+  await p.goto(base + "/index.html", { waitUntil: "load" });
+  await p.evaluate(() => localStorage.clear());
+  await p.locator("#search").click();                       // empty postcode
+  await p.waitForFunction(() =>
+    document.getElementById("msg").textContent.includes("postcode"), null, { timeout: 5000 });
+  const order = await p.evaluate(() => ({
+    afterButton: !!(document.getElementById("search").compareDocumentPosition(document.getElementById("msg"))
+      & Node.DOCUMENT_POSITION_FOLLOWING),
+    beforeCar: !!(document.getElementById("msg").compareDocumentPosition(document.getElementById("carDetails"))
+      & Node.DOCUMENT_POSITION_FOLLOWING),
+  }));
+  assert.ok(order.afterButton, "the message sits after the search button");
+  assert.ok(order.beforeCar, "and before the car card it used to hide beneath");
+  await p.close();
+});
+
+test("no results speaks the user's fuel, and the readout says what to do next", async () => {
+  const p = await page.context().newPage();
+  await p.goto(base + "/index.html", { waitUntil: "load" });
+  await p.evaluate(() => localStorage.clear());
+  await p.selectOption("#fuel", "B7P");                     // the fixture sells no B7P
+  await p.locator("#postcode").fill("NG1 5FS");
+  await p.locator("#search").click();
+  await p.waitForFunction(() =>
+    document.getElementById("msg").textContent.includes("No forecourts"), null, { timeout: 15000 });
+  assert.match(await p.locator("#msg").textContent(),
+    /No forecourts selling premium diesel within 8 miles/,
+    "the fuel is words, not a grade code, and no radius…radius repetition");
+  assert.equal((await p.locator("#bestWhere").textContent()).trim(), "Nothing found");
+  assert.match(await p.locator("#bestSub").textContent(), /Widen the search or switch fuel/);
+  await p.evaluate(() => localStorage.clear());             // the B7P select saved a car
+  await p.close();
+});
+
+// Every fixture forecourt on day hours: all shut at the pinned 23:15, so the winner is
+// closed — the state the readout used to present without comment.
+const ALL_CLOSED = JSON.stringify({
+  generated_at: new Date(FIXED - 30 * 60000).toISOString(),
+  count: STATIONS.length,
+  stations: STATIONS.map(s => ({ ...s, o: DAY_HOURS })),
+});
+
+test("at closing time the headline says the winner is closed, and when it opens", async () => {
+  const pattern = "**/data/prices.json";
+  const serve = r => r.fulfill({ contentType: "application/json", body: ALL_CLOSED });
+  await page.context().route(pattern, serve);               // registered last, so it wins
+  const p = await page.context().newPage();
+  await p.clock.setFixedTime(FIXED);
+  try {
+    await p.goto(base + "/index.html", { waitUntil: "load" });
+    await p.evaluate(() => localStorage.clear());
+    await p.locator("#postcode").fill("NG1 5FS");
+    await p.locator("#search").click();
+    await p.waitForFunction(() =>
+      document.querySelectorAll("#results .station").length > 0, null, { timeout: 15000 });
+    const sub = await p.locator("#bestSub").innerHTML();
+    assert.match(sub, /pill old">closed — opens /, "the readout carries the closed caveat");
+    assert.match(sub, /opens (tomorrow )?\d\d:\d\d/, "with a real opening time, not a shrug");
+  } finally {
+    await p.close();
+    await page.context().unroute(pattern, serve);
+  }
+});
+
+test("the first successful search folds the car card — unless Change was pressed", async () => {
+  const p = await page.context().newPage();
+  await p.goto(base + "/index.html", { waitUntil: "load" });
+  await p.evaluate(() => localStorage.clear());
+  await p.reload({ waitUntil: "load" });
+  assert.ok(await p.locator("#carDetails").isVisible(), "fresh visitor: full controls first");
+  await p.locator("#postcode").fill("NG1 5FS");
+  await p.locator("#search").click();
+  await p.waitForFunction(() =>
+    document.querySelectorAll("#results .station").length > 0, null, { timeout: 15000 });
+  assert.ok(await p.locator("#carSummary").isVisible(), "a successful search settles the car: folded");
+  assert.ok(await p.locator("#carDetails").isHidden());
+  assert.match(await p.locator("#carSummaryText").textContent(), /46 mpg/);
+  await p.locator("#carChange").click();                    // the user's hand pins it open
+  await p.locator("#search").click();
+  await p.waitForFunction(() =>
+    !document.getElementById("search").disabled, null, { timeout: 15000 });
+  assert.ok(await p.locator("#carDetails").isVisible(), "a rerun never folds against Change");
+  await p.close();
 });
 
 // --- car presets -------------------------------------------------------------------

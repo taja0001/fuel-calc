@@ -30,6 +30,13 @@ stranger's first run, feature gaps, trust — every finding cited against real l
 
 ## More user-friendly
 
+> Items 7, 9, 10 and 11 ✅ **shipped 2026-08-30** after the "stranger pass" preview
+> artifact — Thomas picked those four; items 8 and 12 were previewed in the same
+> artifact and remain open, neither picked nor rejected. Ship notes: the fold (11)
+> keeps the fuel gauge outside the fold, matching the existing returning-visitor
+> behaviour — revisit only if Thomas asks; the no-results copy (9) pluralises the
+> radius ("1 mile", not "1 miles" — the preview caught that bug in its own rewrite).
+
 7. **Errors render ~700px below the fold.** `#msg` sits after the entire Your-car card,
    so tapping search with an empty postcode writes "Enter a postcode…" far below the
    viewport — the app looks dead on the stranger's most likely first tap. Fix: move the

@@ -17,7 +17,11 @@ before saved postcodes), the weekly email digest queued as Phase 2 in
 [search-counter.md](search-counter.md), and [forum-launch.md](forum-launch.md)
 (2026-08-25: first users via Facebook groups + MSE — gated on the domain move, a repo
 visibility decision, and venue-rules homework; MSE bans self-promotion outright, so the
-route there is the forum team's blessing or an editorial pitch, never a self-post).
+route there is the forum team's blessing or an editorial pitch, never a self-post), and
+[review-board-2026-08-30.md](review-board-2026-08-30.md) (the five-lens fresh-eyes
+findings, items 7–24 plus two open AI-tells — **every batch from that board gets a
+before/after preview artifact for Thomas BEFORE touching index.html**; fixes 4/5/6
+shipped that way 30 Aug, fix 1 was rejected at preview, which is the system working).
 
 ---
 

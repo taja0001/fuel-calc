@@ -384,6 +384,25 @@ test("the search counter: a typed postcode is cut to its district before it leav
   assert.equal(await page.evaluate(() => window.__beacons.at(-1)), "search,near,ok,NG1");
 });
 
+test("a failed search restores the readout — eights never survive the self-test", async () => {
+  // The searching state shows £88.88 in the readout (the pump self-test). Any path
+  // that exits run() without rendering — validation, thrown errors — must put the
+  // previous reading back, or a typo leaves fabricated eights in the flagship slot.
+  const p = await page.context().newPage();
+  await p.goto(base + "/index.html", { waitUntil: "load" });
+  const grab = () => p.evaluate(() => ({
+    total: document.getElementById("bestTotal").textContent,
+    where: document.getElementById("bestWhere").textContent,
+    cls: document.querySelector(".readout").className,
+  }));
+  const before = await grab();
+  await p.locator("#search").click();               // empty postcode: validation return
+  await p.waitForFunction(() => document.getElementById("msg").textContent.includes("postcode"),
+    null, { timeout: 5000 });
+  assert.deepEqual(await grab(), before, "the reading before the search came back exactly");
+  await p.close();
+});
+
 test("a fuel switch landing MID-search still takes effect once the search finishes", async () => {
   // One search at a time is right — but the loser used to be dropped silently, so on a
   // slow connection changing fuel during a search looked like the switch was broken.
@@ -395,12 +414,30 @@ test("a fuel switch landing MID-search still takes effect once the search finish
   };
   await page.context().route(pattern, slow);      // registered last, so it wins
   try {
+    // The E10 paint now survives only microseconds: the queued rerun's searching
+    // self-test (£88.88) wipes the readout the moment the first render lands, so
+    // polling can't observe it. A MutationObserver records every value bestSub takes,
+    // which is the honest assertion anyway — the paint HAPPENED, in order.
+    await page.evaluate(() => {
+      window.__subSeen = [];
+      const el = document.getElementById("bestSub");
+      // Read each RECORD's added node, not el.textContent: the E10 paint and the
+      // queued run's wipe land in the same task, so by the time the (micro-task)
+      // callback runs, textContent is already the wiped value for both records.
+      new MutationObserver(muts => {
+        for (const m of muts)
+          window.__subSeen.push(m.addedNodes[0] ? m.addedNodes[0].data : el.textContent);
+      }).observe(el, { childList: true, characterData: true, subtree: true });
+    });
     await page.selectOption("#fuel", "E10");      // re-runs: results are on screen
     await page.selectOption("#fuel", "B7");       // lands while that run awaits OSRM
-    await page.waitForFunction(() =>              // the in-flight E10 search paints first
-      document.getElementById("bestSub").textContent.includes("@ 140.0p"), null, { timeout: 15000 });
-    await page.waitForFunction(() =>              // then the queued B7 run replaces it
+    await page.waitForFunction(() =>              // the queued B7 run wins in the end
       document.getElementById("bestSub").textContent.includes("@ 152.0p"), null, { timeout: 15000 });
+    const seen = await page.evaluate(() => window.__subSeen);
+    const iE10 = seen.findIndex(s => s.includes("@ 140.0p"));
+    const iB7 = seen.findIndex(s => s.includes("@ 152.0p"));
+    assert.ok(iE10 !== -1, `the in-flight E10 search painted first (saw: ${seen.join(" | ")})`);
+    assert.ok(iE10 < iB7, "and it painted BEFORE the queued B7 result, never after");
   } finally {
     await page.context().unroute(pattern, slow);
   }

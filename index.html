@@ -65,15 +65,19 @@
   :root[data-theme="dark"]{color-scheme:dark;--ground:#141210;--panel:#201c17;--panel-2:#1a1712;--ink:#f2ece1;--ink-soft:#a89c89;--hair:#322c24;--hair-strong:#423a30;--amber:#ffb020;--amber-glow:#ffc247;--go:#4fd188;--go-soft:#16271d;--go-ink:#4fd188;--go-pill:#4fd188;--warn:#e0a54a;--shadow:0 1px 2px rgba(0,0,0,.4),0 16px 34px rgba(0,0,0,.5);--readout-bg:#0c0a07;--readout-ink:#ffb020;--readout-dim:rgba(255,176,32,.24);}
 
   *{box-sizing:border-box;}
+  /* A humanist local stack, not the system-ui default: same zero bytes and zero CSP
+     surface (no webfont), but the page stops looking like factory settings. Seravek on
+     Apple, Gill Sans Nova / Calibri on Windows, Ubuntu / DejaVu on Linux; the readout's
+     ui-monospace is untouched — that's the fingerprint. */
   body{margin:0;background:var(--ground);color:var(--ink);line-height:1.5;
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;}
+    font-family:Seravek,'Gill Sans Nova',Ubuntu,Calibri,'DejaVu Sans','Trebuchet MS',sans-serif;-webkit-font-smoothing:antialiased;}
   .wrap{max-width:600px;margin:0 auto;padding:26px 16px 72px;}
 
   header{text-align:center;margin-bottom:20px;}
   .badge{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:700;
     letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:8px;}
   .badge .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 8px var(--amber-glow);}
-  h1{font-size:28px;margin:0;letter-spacing:-.02em;text-wrap:balance;}
+  h1{font-size:28px;margin:0;text-wrap:balance;}
   .tag{color:var(--ink-soft);font-size:14px;margin-top:4px;}
 
   .readout{background:var(--readout-bg);border-radius:var(--radius);padding:20px;margin:18px 0;
@@ -101,8 +105,11 @@
   .readout .sub{font-family:ui-monospace,Menlo,monospace;color:rgba(245,241,232,.8);font-size:12.5px;
     font-variant-numeric:tabular-nums;margin-top:6px;}
 
+  /* Elevation is hierarchy, not decoration: one deep shadow on every surface read as a
+     template. Now the readout (an instrument) and the winning row keep their lift; the
+     forms and beaten rows sit on the page as paper with a contact shadow. */
   .card{background:var(--panel);border:1px solid var(--hair);border-radius:var(--radius);
-    padding:16px 16px 18px;box-shadow:var(--shadow);margin-bottom:14px;}
+    padding:16px 16px 18px;box-shadow:0 1px 2px rgba(20,15,8,.05);margin-bottom:14px;}
   .card h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);
     margin:0 0 12px;font-weight:700;}
 
@@ -186,7 +193,7 @@
      height on every card (pill-bearing rows are taller), so the two scan columns
      zigzagged. Start-aligned with small offsets, both columns track the name's line. */
   .station{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;
-    background:var(--panel);border:1px solid var(--hair);border-radius:12px;padding:13px 14px;box-shadow:var(--shadow);}
+    background:var(--panel);border:1px solid var(--hair);border-radius:12px;padding:13px 14px;box-shadow:0 1px 2px rgba(20,15,8,.06);}
   .station.best{border-color:var(--go);box-shadow:var(--shadow),0 0 0 1px var(--go);}
   .rank{font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:700;color:var(--ink-soft);
     width:22px;text-align:center;margin-top:4px;}
@@ -264,7 +271,7 @@
   #freshness.stale{color:var(--warn);}
   footer .ogl{margin-top:8px;font-size:11px;opacity:.75;}
   #trend{margin:26px 0 0;padding:14px 16px 10px;background:var(--panel);border:1px solid var(--hair);
-    border-radius:14px;box-shadow:var(--shadow);}
+    border-radius:14px;box-shadow:0 1px 2px rgba(20,15,8,.05);}
   #trend figcaption{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);
     font-weight:700;margin-bottom:8px;}
   #trendSvg{display:block;width:100%;height:64px;touch-action:none;}
@@ -276,9 +283,6 @@
   .trend-data summary{font-size:11.5px;color:var(--ink-soft);cursor:pointer;margin-top:4px;}
   .trend-data table{font-size:11.5px;color:var(--ink-soft);border-collapse:collapse;margin-top:6px;}
   .trend-data td,.trend-data th{padding:1px 10px 1px 0;text-align:right;}
-  .spin{display:inline-block;width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;
-    border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px;margin-right:6px;}
-  @keyframes sp{to{transform:rotate(360deg);}}
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
 </style>
 
@@ -946,6 +950,11 @@
   $("postcode").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
 
   let searching = false, queued = false;
+  // Set while the readout is showing the searching self-test; calling it puts the
+  // previous reading back. render() nulls it (it paints the truth); every other exit
+  // from run() — validation returns, thrown errors — must restore, or a failed search
+  // leaves eights standing in the flagship slot.
+  let restoreReadout = null;
   async function run(){
     // One search at a time: Enter, the GPS callback and the fuel-type rerun all enter
     // here, and two in flight can finish out of order — the late one painting stale
@@ -955,7 +964,25 @@
     if (searching) { queued = true; return; }
     searching = true;
     const btn = $("search");
-    btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Searching…';
+    btn.disabled = true; btn.textContent = "Searching…";
+    // The searching state is the pump self-test every UK driver has watched: all
+    // eights, dimmed (the .empty styling), while the machine thinks. It replaces a
+    // stock spinner that sat a few hundred pixels from the most distinctive component
+    // on the page. The readout is aria-live, so this also announces the search.
+    {
+      const rd = document.querySelector(".readout");
+      const snap = [rd.className, $("bestTotal").textContent, $("bestWhere").textContent,
+                    $("bestSub").textContent, $("bestSave").textContent, $("bestEnds").textContent];
+      restoreReadout = () => {
+        rd.className = snap[0];
+        [$("bestTotal"), $("bestWhere"), $("bestSub"), $("bestSave"), $("bestEnds")]
+          .forEach((el, i) => el.textContent = snap[i + 1]);
+      };
+      rd.classList.add("empty");
+      $("bestTotal").textContent = "£88.88";
+      $("bestWhere").textContent = "Checking every forecourt…";
+      $("bestSub").textContent = ""; $("bestSave").textContent = ""; $("bestEnds").textContent = "";
+    }
     try {
       await loadStations();
       const fuel = $("fuel").value;
@@ -1241,6 +1268,7 @@
       countSearch("err");
     } finally {
       searching = false;
+      if (restoreReadout) { restoreReadout(); restoreReadout = null; }
       btn.disabled = false; btn.textContent = "Find the cheapest fill-up";
       // The queued search reads the form as it is NOW, so it reflects every change
       // that arrived while the last one was in flight — one re-run covers them all.
@@ -1249,6 +1277,7 @@
   }
 
   function render(rows, ctx){
+    restoreReadout = null;   // render paints the truth; nothing to put back
     const res = $("results");
     if (!rows.length){
       setMsg("No forecourts with " + ctx.fuel + " prices " + (ctx.mode === "journey" ? "near your route. Try a bigger detour." : "within that radius. Try a bigger radius."), true);

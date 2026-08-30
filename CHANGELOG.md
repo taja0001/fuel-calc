@@ -5,6 +5,40 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ---
 
+## 2026-08-30
+
+**Three fixes from the five-lens "does this look AI-made?" review** (fixes 4, 5 and 6 of
+six; the emoji stay by Thomas's choice — he likes them):
+
+**The searching spinner became the pump self-test.** The stock border-ring spinner is
+deleted; while a search runs, the readout dims and shows **£88.88 — "Checking every
+forecourt…"** — the self-test every UK driver has watched at a real pump. The readout is
+aria-live, so the search now announces itself to screen readers too. The invariant that
+makes this safe: every path out of `run()` that doesn't render — validation returns,
+thrown errors — restores the exact previous reading via a snapshot, so eights can never
+survive a failed search (pinned by a new test). Side effect: the self-test clears
+`bestSave`/`bestEnds` at search start, which incidentally fixes the stale journey-ends
+line surviving into a no-results readout.
+
+**Elevation is hierarchy now.** One deep shadow on every surface read as a component
+template. The readout (an instrument) and the winning row (with its green ring) keep
+their lift; the form cards, beaten rows and trend chart sit on the page as paper with a
+1px contact shadow.
+
+**The body type stops being factory settings.** `system-ui` → a humanist local stack
+(Seravek / Gill Sans Nova / Ubuntu / Calibri / DejaVu), zero bytes, no webfont, no CSP
+change; the h1 loses its boilerplate negative tracking. The readout's `ui-monospace` is
+deliberately untouched — that's the fingerprint.
+
+Test note: the mid-search fuel-switch test now records `bestSub` values via a
+MutationObserver reading each mutation record's added node — the E10 paint and the queued
+rerun's wipe land in the same task, so polling (and even reading `textContent` in the
+observer callback) sees only the wiped value. The test got stronger: it now asserts the
+first paint *happened and happened in order*, not merely that the final state arrived.
+(54 tests green; payload 33.1 → 34.1 KB gz.)
+
+---
+
 ## 2026-08-25
 
 **The trend chart follows your fuel.** It plotted the E10 national average for

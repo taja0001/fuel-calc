@@ -195,6 +195,46 @@ name than any other candidate — it does NOT contain the forbidden string and t
 word differs, so the July rule is satisfied, but it's the closest orbit of the lot.
 EV-proof, unlike `petrolmaths`. If chosen, buy all three and let .co.uk lead.
 
+**Fourth batch, 2026-08-31 — generated + blind-voted.** 40 AI-generated candidates
+(5 lenses), screened to 7, live-RDAP-checked, then a blind 30-persona panel voted on
+the 5 with a free .co.uk alongside the incumbents. Results:
+
+- **whichpump won 24/30 (80%)** — top-two on every ballot, ZERO mistypes. But the
+  trust is borrowed: nearly every winning reason cites "sounds like Which? magazine",
+  which is also its legal/brand risk. **.com is TAKEN** (new since Aug 17).
+- **fuelmaths: clean runner-up** — 6 firsts, 13 seconds, 4 mistypes ("fuelmath"),
+  trusted on its own merits ("says exactly what it does, no flannel"). Both TLDs free.
+- **forecourtfinder: collapsed** — zero firsts, zero seconds, "a mouthful"; also
+  carries the panel finding that "forecourt" is trade jargon.
+- **fuelfindr (Tom's 31 Aug candidate): TAKEN** — .co.uk and .com both registered
+  before we could test it.
+- New candidates truefill (12/30 would mistype "trufill") and countthedrive (10/30)
+  died on the radio test. Also taken as of today: wherescheapest.co.uk, cheapfill,
+  cheapestpetrol, drivedown, downtheroad.
+- Panel recommendation: buy whichpump.co.uk after a passing-off sanity check on the
+  Which? proximity, and buy the fuelmaths pair (~£15) as the clean fallback either way.
+- Note: this file is served publicly by Pages, so the candidate list (and now this
+  verdict) is readable at the live URL — cheap names sitting unbought can be squatted.
+
+**Round 2, same day — 100 voters, generator originals added.** RDAP first: of the 10
+never-balloted originals, petrolmoney, quidsin, brimly, honestfuel and itaddsup are
+ALL already taken; free were cannyfill (both TLDs), milemaths (both), netfill,
+fillwise, fuelrun (.co.uk only). Vote on 10 names: **whichpump 43** · **cannyfill 23**
+· **fuelmaths 23** · fillwise 10 · fuelrun 1; forecourtfinder again zero.
+whichpump's zero-mistype record broke at scale ("witchpump" ×7); milemaths was the
+field's worst (38 mistypes, muddled with fuelmaths); truefill's "trufill" problem
+confirmed (14). Write-ins: essentially none — the space is picked over.
+**Standing recommendation: buy fuelmaths.co.uk + .com** (fully ownable, near-best
+mistypes, no legal shadow); **cannyfill pair as the warm-brand hedge** (joint second,
+both TLDs free, slight north/Scotland skew); whichpump.co.uk only with eyes open —
+its support is explicitly Which?-borrowed and its .com is gone.
+
+**DECIDED 2026-08-31 ~21:45: Tom bought `whichpump.co.uk`** (Cloudflare Registrar —
+zone already on the CF account, so the plan's move-DNS-to-Cloudflare step is moot).
+Two-panel winner (24/30, then 43/100), eyes open on the Which? adjacency. `.com`
+taken; `whichpump.uk` still free at purchase time — recommended defensive buy.
+Migration proceeds per [domain-migration.md](domain-migration.md).
+
 Cost ballpark: £5–10/yr for .co.uk/.uk, £10–15 for .com (Porkbun/Namecheap both handle
 .uk; confirm Cloudflare Registrar's .uk support before assuming it).
 

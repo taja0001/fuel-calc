@@ -20,7 +20,7 @@ stranger's first run, feature gaps, trust — every finding cited against real l
 | # | Fix | Status |
 |---|---|---|
 | 1 | Emoji → drawn SVG icons | **REJECTED 2026-08-30 — Thomas likes the emoji. Don't re-propose.** |
-| 2 | Header dot → instrument light (warn colour when feed stale/offline) | Open — previewed and liked, not yet requested |
+| 2 | Header dot → instrument light (warn colour when feed stale/offline) | ✅ Shipped 2026-08-31 as **C+**: dot deleted, ⛽ takes the badge (Tom's pick from the dot board), warn lamp + `#feednote` sentence appear ONLY when feed stale/offline — wired into `showFreshness()`, every exit syncs via `syncFeedFault()`. 64 tests green ×2. |
 | 3 | Em-dash template copy pass (~6 strings, own shapes each) | Open — previewed; overlaps items 12 and 23 below |
 | 4 | Humanist local font stack, untracked h1 | ✅ Shipped 2026-08-30 |
 | 5 | Shadow hierarchy (instrument deep, paper flat, winner lifted) | ✅ Shipped 2026-08-30 |
@@ -138,6 +138,30 @@ stranger's first run, feature gaps, trust — every finding cited against real l
     (£-figure, tagline, "HM Government data"), `og:image` + `og:url` tags. Costs the
     shell nothing (scrapers only). **Sequence with the domain migration** — og:url is
     one more place the URL lives. *Small, but gated.*
+
+25. **First-timer tagline** — ✅ **Shipped 2026-08-31, panel-tested.** The header tag is
+    now "Type your postcode. Free, no sign-up: it finds the cheapest fill-up near you,
+    counting the fuel to drive there." Chosen by three simulated-first-timer panels
+    (20 → 100 → 50 head-to-head; this wording beat T3F 35–15 in the runoff; "free, no
+    sign-up" cited by all 35). Panel by-products worth keeping: item 8's premise was
+    independently raised by ~40 of 100 personas (loudest product complaint); freshness/
+    provenance (~24/50) and diesel parity (~20/50) are the next conversion cliffs —
+    feed items 19–23. Micro-edits the runoff suggested but that are NOT applied
+    (Tom's call): "including" for "counting" (~23 of 50 double-took on "counting");
+    dash for the colon; optional "petrol or diesel". The old tag lives on only in the
+    meta description, which was deliberately left alone.
+
+26. **H1** — ✅ **Shipped 2026-08-31, panel-tested (5 rounds total).** Now "Where's
+    actually cheapest to fill up?" — the visitor's own question; the F2 tagline
+    carries the USP (the pair is load-bearing — h1 must never travel without the tag:
+    og:title, snippets, ads). Ballot history: four-way HC 36 · HB 25 · HA 14 · HD 0,
+    then confirmation HB 20 · HE 10 · HC 0 (HE = the crowd-authored line; the
+    differentiator vote split and the clarity vote consolidated). Synced: `<title>`,
+    `og:title`, meta description (now carries free/no-sign-up); the results-panel
+    explainer is where "true cost" gets introduced now. Tests: 6 of 7 runs 64/64
+    green; one run flaked 2 tests, output not captured, not reproduced in 5 retries.
+    Panel by-products: FILL-UP badge read as "ad label" by 6 of 75 (watch it);
+    "fill-up" in any headline needs wrap protection (14 of 75 saw HD shatter).
 
 ## Also still open (older, same class)
 

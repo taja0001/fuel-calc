@@ -20,10 +20,10 @@
      too fragile for this repo's edit-and-push workflow. Meta-CSP cannot express
      frame-ancestors or reporting; those need real headers (a Cloudflare proxy). -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'unsafe-inline'; img-src 'self'; connect-src 'self' https://api.postcodes.io https://router.project-osrm.org https://cloudflareinsights.com https://search-counter.thomas-ainsworth1.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
-<title>Fill-Up — cheapest forecourt by true cost</title>
+<title>Fill-Up — where's actually cheapest to fill up?</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Find the cheapest place to fill up in the UK, ranked by true cost — pump price plus the fuel you'd burn driving there. Live government prices.">
-<meta property="og:title" content="Fill-Up — cheapest forecourt by true cost">
+<meta name="description" content="Where's actually cheapest to fill up? Pump price plus the fuel you'd burn driving there — free, no sign-up, live government prices for every UK station.">
+<meta property="og:title" content="Fill-Up — where's actually cheapest to fill up?">
 <meta property="og:description" content="The cheapest fill-up near you or on your route, counting the fuel you burn getting there.">
 <meta property="og:type" content="website">
 <!-- Open the connections to the two services a search needs while the user is still
@@ -296,8 +296,15 @@
 <div class="wrap">
   <header>
     <div class="badge"><span class="pump" aria-hidden="true">⛽</span> Fill-Up <span class="lamp"></span></div>
-    <h1>Cheapest forecourt by <em>true</em> cost</h1>
-    <div class="tag">Pump price plus the fuel to drive there and back.</div>
+    <!-- Panel-tested (31 Aug 2026): won the 30-person confirmation ballot 20-10-0
+         over two differentiator-led lines. The headline asks the visitor's own
+         question; the tagline below carries the drive-cost USP — this pair is
+         load-bearing, don't let the h1 travel without the tag. -->
+    <h1>Where's actually cheapest to fill up?</h1>
+    <!-- Panel-tested copy (31 Aug 2026): beat three rivals 99-1 with 100 simulated
+         first-timers as T3F, then this wording won the 50-person runoff 35-15.
+         "Free, no sign-up" is the load-bearing phrase — every one of the 35 cited it. -->
+    <div class="tag">Type your postcode. Free, no sign-up: it finds the cheapest fill-up near you, counting the fuel to drive there.</div>
     <div id="feednote" role="status"></div>
   </header>
 

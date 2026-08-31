@@ -76,7 +76,14 @@
   header{text-align:center;margin-bottom:20px;}
   .badge{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:700;
     letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:8px;}
-  .badge .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 8px var(--amber-glow);}
+  /* The badge wears the pump; the lamp beside it exists only while the feed is stale
+     or we're offline. An indicator that is normally absent can't rot into decoration —
+     the always-on glow dot it replaces had. #feednote is the same state in words. */
+  .badge .pump{font-size:13px;line-height:1;}
+  .badge .lamp{display:none;width:8px;height:8px;border-radius:50%;background:var(--warn);box-shadow:0 0 8px var(--warn);}
+  .badge.warn .lamp{display:inline-block;}
+  #feednote{display:none;font-size:13px;color:var(--warn);max-width:44ch;margin:10px auto 0;}
+  #feednote.on{display:block;}
   h1{font-size:28px;margin:0;text-wrap:balance;}
   .tag{color:var(--ink-soft);font-size:14px;margin-top:4px;}
 
@@ -288,9 +295,10 @@
 
 <div class="wrap">
   <header>
-    <div class="badge"><span class="dot"></span> Fill-Up</div>
+    <div class="badge"><span class="pump" aria-hidden="true">⛽</span> Fill-Up <span class="lamp"></span></div>
     <h1>Cheapest forecourt by <em>true</em> cost</h1>
     <div class="tag">Pump price plus the fuel to drive there and back.</div>
+    <div id="feednote" role="status"></div>
   </header>
 
   <div class="readout empty" aria-live="polite" aria-atomic="true">
@@ -830,13 +838,22 @@
   let staleNote = "";
   let servedFromCache = false;
 
+  // The header lamp and #feednote mirror staleNote: lit and speaking only while the
+  // feed has stopped or we're offline, gone again the moment it recovers. Every exit
+  // from showFreshness() must pass through here, or the header lies in one direction.
+  function syncFeedFault(){
+    const badge = document.querySelector(".badge"), note = $("feednote");
+    if (badge) badge.classList.toggle("warn", !!staleNote);
+    if (note){ note.innerHTML = staleNote; note.classList.toggle("on", !!staleNote); }
+  }
+
   function showFreshness(){
     const el = $("freshness");
     staleNote = "";
-    if (!el) return;
-    if (!dataGeneratedAt || dataGeneratedAt === "sample"){ el.textContent = ""; el.classList.remove("stale"); return; }
+    if (!el){ syncFeedFault(); return; }
+    if (!dataGeneratedAt || dataGeneratedAt === "sample"){ el.textContent = ""; el.classList.remove("stale"); syncFeedFault(); return; }
     const then = new Date(dataGeneratedAt).getTime();
-    if (!isFinite(then)){ el.textContent = ""; el.classList.remove("stale"); return; }
+    if (!isFinite(then)){ el.textContent = ""; el.classList.remove("stale"); syncFeedFault(); return; }
     const mins = Math.max(0, Math.round((Date.now() - then) / 60000));
     let ago;
     if (mins < 1) ago = "just now";
@@ -853,6 +870,7 @@
     else if (stale) staleNote =
       `These prices were last updated <b>${ago}</b> — the hourly feed looks to have stopped.
        Treat them as a guide and check the price at the pump.`;
+    syncFeedFault();
   }
 
   // Takes a full postcode, a half postcode (NG1), or a place name (Nottingham) — all

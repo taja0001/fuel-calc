@@ -523,6 +523,9 @@ test("a failed refresh keeps the real stations instead of swapping in sample dat
   }));
   assert.equal(state.sampleNote, false, "no sample-data note");
   assert.ok(state.rows > 0, "results still on screen");
+  assert.ok(await page.locator(".badge .lamp").isVisible(), "offline lights the header lamp too");
+  assert.match(await page.locator("#feednote").textContent(), /offline/,
+    "and the sentence blames the network, not the feed");
   await page.context().unroute("**/data/prices.json");
 });
 
@@ -589,6 +592,44 @@ test("at closing time the headline says the winner is closed, and when it opens"
     const sub = await p.locator("#bestSub").innerHTML();
     assert.match(sub, /pill old">closed — opens /, "the readout carries the closed caveat");
     assert.match(sub, /opens (tomorrow )?\d\d:\d\d/, "with a real opening time, not a shrug");
+  } finally {
+    await p.close();
+    await page.context().unroute(pattern, serve);
+  }
+});
+
+// The header status lamp (review-board item 2, shipped as C+): invisible while the
+// feed is healthy, lit — with the stale sentence above the readout — when the Pi has
+// missed three hourly rounds. generated_at five hours before the pinned clock.
+const STALE_FEED = JSON.stringify({
+  generated_at: new Date(FIXED - 5 * 3600000).toISOString(),
+  count: STATIONS.length,
+  stations: STATIONS,
+});
+
+test("a stopped feed lights the header lamp and says so; a fresh one shows nothing", async () => {
+  const fresh = await page.context().newPage();
+  await fresh.clock.setFixedTime(FIXED);
+  await fresh.goto(base + "/index.html", { waitUntil: "load" });
+  await fresh.waitForFunction(() =>
+    document.getElementById("freshness").textContent.includes("30m ago"), null, { timeout: 15000 });
+  assert.ok(await fresh.locator(".badge .lamp").isHidden(), "healthy feed: no lamp at all");
+  assert.ok(await fresh.locator("#feednote").isHidden(), "healthy feed: no fault sentence");
+  await fresh.close();
+
+  const pattern = "**/data/prices.json";
+  const serve = r => r.fulfill({ contentType: "application/json", body: STALE_FEED });
+  await page.context().route(pattern, serve);               // registered last, so it wins
+  const p = await page.context().newPage();
+  await p.clock.setFixedTime(FIXED);
+  try {
+    await p.goto(base + "/index.html", { waitUntil: "load" });
+    await p.waitForFunction(() =>
+      document.getElementById("feednote").classList.contains("on"), null, { timeout: 15000 });
+    assert.ok(await p.locator(".badge .lamp").isVisible(), "stale feed: the lamp is lit");
+    const note = await p.locator("#feednote").textContent();
+    assert.match(note, /last updated 5h ago/, "the sentence carries the real age");
+    assert.match(note, /feed looks to have stopped/, "and says plainly what's wrong");
   } finally {
     await p.close();
     await page.context().unroute(pattern, serve);

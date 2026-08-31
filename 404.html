@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fill-Up — nothing at this address</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="/icon-192.png">
+<style>
+  /* Tokens lifted from index.html so the 404 is unmistakably the same instrument.
+     Self-contained on purpose: this page must render with nothing else deployed. */
+  :root{color-scheme:light dark;
+    --ground:#f4f1ea;--panel:#fff;--ink:#221d16;--ink-soft:#6b6154;--hair:#e4ddd0;
+    --amber:#b8720a;--readout-bg:#16130f;--readout-ink:#ffb020;
+    --shadow:0 1px 2px rgba(34,29,22,.06),0 12px 28px rgba(34,29,22,.10);}
+  @media (prefers-color-scheme: dark){
+    :root{--ground:#141210;--panel:#201c17;--ink:#f2ece1;--ink-soft:#a89c89;
+      --hair:#322c24;--amber:#ffb020;--readout-bg:#0c0a07;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 16px 34px rgba(0,0,0,.5);}}
+  body{margin:0;background:var(--ground);color:var(--ink);line-height:1.5;
+    font-family:Seravek,'Gill Sans Nova',Ubuntu,Calibri,'DejaVu Sans','Trebuchet MS',sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:600px;margin:0 auto;padding:26px 16px 72px;text-align:center;}
+  .badge{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:700;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:8px;}
+  .badge .pump{font-size:13px;line-height:1;}
+  h1{font-size:28px;margin:0;text-wrap:balance;}
+  .tag{color:var(--ink-soft);font-size:14px;margin-top:4px;}
+  .readout{background:var(--readout-bg);border-radius:18px;padding:20px;margin:18px 0;
+    box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,176,32,.12);position:relative;overflow:hidden;}
+  .readout::before{content:"";position:absolute;inset:0;opacity:.5;pointer-events:none;
+    background:repeating-linear-gradient(180deg,transparent 0 3px,rgba(0,0,0,.14) 3px 4px);}
+  .readout .lbl{font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:rgba(255,176,32,.85);font-weight:700;}
+  .readout .total{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:clamp(40px,13vw,60px);
+    font-weight:700;line-height:1;color:var(--readout-ink);font-variant-numeric:tabular-nums;
+    text-shadow:0 0 18px rgba(255,176,32,.35);margin:8px 0 4px;}
+  .readout .where{color:var(--readout-ink);font-size:16px;font-weight:600;}
+  .home{display:inline-block;margin-top:10px;background:var(--amber);color:var(--ground);
+    font-weight:700;font-size:16px;text-decoration:none;border-radius:12px;padding:12px 22px;}
+  .home:focus-visible{outline:3px solid var(--readout-ink);outline-offset:2px;}
+  .hint{color:var(--ink-soft);font-size:13px;margin-top:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="badge"><span class="pump" aria-hidden="true">⛽</span> Fill-Up</div>
+    <h1>Nothing at this address</h1>
+    <div class="tag">The link may be mistyped, or this page has moved on. No harm done.</div>
+  </header>
+
+  <!-- The pump display shows the one reading a missing page honestly has — the
+       status code, not a made-up price. Same instrument-honesty rule as the app's
+       dashed empty state. -->
+  <div class="readout">
+    <div class="lbl">This page</div>
+    <div class="total">404</div>
+    <div class="where">Not found</div>
+  </div>
+
+  <a class="home" href="/">Find the cheapest fill-up instead</a>
+  <p class="hint">Everything Fill-Up does lives on one page. The button above is the whole way back, and it's free with no sign-up.</p>
+</div>
+</body>
+</html>

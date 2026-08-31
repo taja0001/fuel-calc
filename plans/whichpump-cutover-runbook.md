@@ -65,6 +65,32 @@ Every place the old name/URL lives in served files, found by grep tonight:
       UNGATED — can ride this commit or follow.
 - [ ] README.md lines 8 and 293: live-site URL and DNS description.
 - [ ] plans/* references to the old URL — sweep at commit time.
+- [ ] **[CLAUDE]** New `robots.txt` — added 2026-08-31 after Gemini couldn't "see"
+      the site (no index presence, no sitemap). Also serves the name-off-site goal:
+      Pages serves every tracked file with a 200, and the paths below name Tom, so
+      keep them out of search results (robots can't stop fetching, only surfacing):
+
+      ```
+      User-agent: *
+      Disallow: /plans/
+      Disallow: /notes/
+      Disallow: /pi/
+      Disallow: /tests/
+      Disallow: /scripts/
+      Disallow: /workers/
+      Disallow: /data/
+      Disallow: /LICENSE
+      Disallow: /README.md
+      Disallow: /CHANGELOG.md
+      Allow: /
+      Sitemap: https://whichpump.co.uk/sitemap.xml
+      ```
+
+- [ ] **[CLAUDE]** New `sitemap.xml` — one URL today (`https://whichpump.co.uk/`),
+      grows with the town pages. Submit it to Search Console/Bing in the SEO phase,
+      not here.
+- [ ] These two files are written AT phase 5, not before — their URLs reference the
+      new domain and would dangle on the old one.
 - [ ] NOT in this commit: BEACON/CSP (phase 7 moves them together).
 
 ## Phase 6 — the old domain becomes a redirect, for years (10 min)
@@ -106,6 +132,8 @@ which also puts it behind the zone's free WAF rate-limiting.
       new origin — first visit downloads fresh, that's expected).
 - [ ] The 404 page renders at `https://whichpump.co.uk/nowhere` (404.html ships
       before or with the cutover).
+- [ ] `curl -s https://whichpump.co.uk/robots.txt` serves the rules;
+      `/sitemap.xml` fetches and lists the homepage.
 
 ## What users feel (one-time, small — say it in the changelog)
 

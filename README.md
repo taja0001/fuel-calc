@@ -5,7 +5,7 @@ A free web app that finds the cheapest place to fill up, ranked by
 not just the sticker price. It runs on live UK prices from the government
 [Fuel Finder](https://www.fuel-finder.service.gov.uk) scheme.
 
-**Live site:** https://fuel.thomasainsworth.co.uk
+**Live site:** https://whichpump.co.uk
 
 ## Features
 
@@ -290,9 +290,12 @@ to get a client ID and secret, then put them in `~/fuel/secrets.env` on the Pi.
 
 ## Custom domain
 
-Served at `fuel.thomasainsworth.co.uk` via GitHub Pages. DNS is a Cloudflare `CNAME`
-`fuel` → `taja0001.github.io`, set to **DNS-only (grey cloud)** so GitHub can issue
-its own HTTPS certificate. (Proxying through Cloudflare blocks the cert.)
+Served at `whichpump.co.uk` via GitHub Pages. DNS is a Cloudflare apex `CNAME`
+(flattened) → `taja0001.github.io`, set to **DNS-only (grey cloud)** so GitHub can
+issue its own HTTPS certificate. (Proxying through Cloudflare blocks the cert.)
+The old `fuel.thomasainsworth.co.uk` is a permanent Cloudflare 301 to the new
+domain, path and query preserved — it stays that way for years so every old
+link and installed app keeps working.
 
 ## Maintenance notes
 

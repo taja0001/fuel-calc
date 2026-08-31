@@ -1,0 +1,13 @@
+User-agent: *
+Disallow: /plans/
+Disallow: /notes/
+Disallow: /pi/
+Disallow: /tests/
+Disallow: /scripts/
+Disallow: /workers/
+Disallow: /data/
+Disallow: /LICENSE
+Disallow: /README.md
+Disallow: /CHANGELOG.md
+Allow: /
+Sitemap: https://whichpump.co.uk/sitemap.xml

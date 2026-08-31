@@ -16,56 +16,56 @@ domain-takeover class from day one (security review #4).
 
 ## Phase 0 — same evening as purchase (5 min)
 
-- [ ] **[TOM]** Buy **whichpump.uk** in the same Cloudflare account (~£5/yr). Free at
+- [x] **[TOM]** Buy **whichpump.uk** in the same Cloudflare account (~£5/yr). Free at
       21:55 tonight; it's the nearest typo to a name whose `.com` is already gone.
       No DNS needed — parked is fine; later it gets a redirect rule.
 
 ## Phase 1 — verify BEFORE pointing (10 min + a propagation wait)
 
-- [ ] **[TOM]** GitHub → Settings → **Pages → Add a verified domain** →
+- [x] **[TOM]** GitHub → Settings → **Pages → Add a verified domain** →
       `whichpump.co.uk`. Copy the TXT record it issues.
-- [ ] **[TOM]** Cloudflare → whichpump.co.uk zone → DNS → add that **TXT** record.
+- [x] **[TOM]** Cloudflare → whichpump.co.uk zone → DNS → add that **TXT** record.
       Wait for GitHub to show ✅ Verified. **The TXT stays forever** — it is the
       protection, not scaffolding.
 
 ## Phase 2 — point DNS (5 min)
 
-- [ ] **[TOM]** Same zone → add **CNAME** `@` → `taja0001.github.io`, **GREY cloud**
+- [x] **[TOM]** Same zone → add **CNAME** `@` → `taja0001.github.io`, **GREY cloud**
       (DNS only). Orange breaks the Pages certificate — July lesson, recorded in
       monetisation.md. Cloudflare flattens the apex CNAME automatically.
-- [ ] **[TOM]** Optional: CNAME `www` → `taja0001.github.io`, grey cloud too.
+- [x] **[TOM]** Optional: CNAME `www` → `taja0001.github.io`, grey cloud too.
 
 ## Phase 3 — repo cutover (Tom says go, Claude commits, Tom clicks)
 
-- [ ] **[CLAUDE]** `git pull` (the Pi pushes hourly), then commit `CNAME` file:
+- [x] **[CLAUDE]** `git pull` (the Pi pushes hourly), then commit `CNAME` file:
       `fuel.thomasainsworth.co.uk` → `whichpump.co.uk`. One line, one commit.
-- [ ] **[TOM]** GitHub repo → Settings → Pages: confirm custom domain shows
+- [x] **[TOM]** GitHub repo → Settings → Pages: confirm custom domain shows
       `whichpump.co.uk`, wait for the certificate (minutes to ~an hour), then
       re-tick **Enforce HTTPS**.
-- [ ] Sanity: `curl -sI https://whichpump.co.uk` → 200 with a valid cert.
+- [x] Sanity: `curl -sI https://whichpump.co.uk` → 200 with a valid cert.
 
 ## Phase 4 — analytics (5 min, then one commit)
 
-- [ ] **[TOM]** Cloudflare → Web Analytics → **add site** `whichpump.co.uk` → copy the
+- [x] **[TOM]** Cloudflare → Web Analytics → **add site** `whichpump.co.uk` → copy the
       new beacon token (tokens are hostname-scoped; the old one would silently count
       nothing on the new domain).
-- [ ] **[CLAUDE]** Swap the token in index.html line 44 (current token
+- [x] **[CLAUDE]** Swap the token in index.html line 44 (current token
       `3eed852c…` dies with the old hostname).
 
 ## Phase 5 — the scrub commit (Claude, one commit; needs one decision)
 
 Every place the old name/URL lives in served files, found by grep tonight:
 
-- [ ] index.html line 4: `https://fuel.thomasainsworth.co.uk` → new URL.
+- [x] index.html line 4: `https://fuel.thomasainsworth.co.uk` → new URL.
 - [ ] index.html line 5 + LICENSE: the copyright line — **[TOM DECIDES]** real name
       or trading name (the "name off the site" scope call; git history is NOT
       rewritten either way — that would destroy the price archive, standing ruling).
-- [ ] index.html og:title/title: already domain-free ✅; **add `og:url`** with the new
+- [x] index.html og:title/title: already domain-free ✅; **add `og:url`** with the new
       domain (was deliberately absent pre-domain). og:image (board item 24) is now
       UNGATED — can ride this commit or follow.
-- [ ] README.md lines 8 and 293: live-site URL and DNS description.
-- [ ] plans/* references to the old URL — sweep at commit time.
-- [ ] **[CLAUDE]** New `robots.txt` — added 2026-08-31 after Gemini couldn't "see"
+- [x] README.md lines 8 and 293: live-site URL and DNS description.
+- [x] plans/* references to the old URL — sweep at commit time.
+- [x] **[CLAUDE]** New `robots.txt` — added 2026-08-31 after Gemini couldn't "see"
       the site (no index presence, no sitemap). Also serves the name-off-site goal:
       Pages serves every tracked file with a 200, and the paths below name Tom, so
       keep them out of search results (robots can't stop fetching, only surfacing):
@@ -86,10 +86,10 @@ Every place the old name/URL lives in served files, found by grep tonight:
       Sitemap: https://whichpump.co.uk/sitemap.xml
       ```
 
-- [ ] **[CLAUDE]** New `sitemap.xml` — one URL today (`https://whichpump.co.uk/`),
+- [x] **[CLAUDE]** New `sitemap.xml` — one URL today (`https://whichpump.co.uk/`),
       grows with the town pages. Submit it to Search Console/Bing in the SEO phase,
       not here.
-- [ ] These two files are written AT phase 5, not before — their URLs reference the
+- [x] These two files are written AT phase 5, not before — their URLs reference the
       new domain and would dangle on the old one.
 - [ ] NOT in this commit: BEACON/CSP (phase 7 moves them together).
 
@@ -97,11 +97,11 @@ Every place the old name/URL lives in served files, found by grep tonight:
 
 Only after phase 3 verifies — the redirect must never race the cutover.
 
-- [ ] **[TOM]** thomasainsworth.co.uk zone → the `fuel` record → **orange cloud** it.
-- [ ] **[TOM]** Add the free Redirect Rule: `fuel.thomasainsworth.co.uk/*` → 301 →
+- [x] **[TOM]** thomasainsworth.co.uk zone → the `fuel` record → **orange cloud** it.
+- [x] **[TOM]** Add the free Redirect Rule: `fuel.thomasainsworth.co.uk/*` → 301 →
       `https://whichpump.co.uk/$1` (preserve path + query — old shared links with
       `?postcode=` style params must survive).
-- [ ] **[TOM]** whichpump.uk (once bought): redirect rule → `https://whichpump.co.uk/$1`.
+- [x] **[TOM]** whichpump.uk bought 31 Aug; redirect rule → `https://whichpump.co.uk/$1`.
 - [ ] Keep both for years. £few/yr. Dropping the old name orphans every shared link
       and installed app, and lets a stranger inherit that traffic.
 

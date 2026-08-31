@@ -121,18 +121,18 @@ which also puts it behind the zone's free WAF rate-limiting.
 
 ## Phase 8 — verify (the usual: real browser, live site)
 
-- [ ] `curl -sI https://fuel.thomasainsworth.co.uk/` → **301** → whichpump.co.uk.
-- [ ] `curl -sI http://whichpump.co.uk` → redirects to **https**.
-- [ ] `gh api repos/taja0001/fuel-calc/pages` → cname is whichpump.co.uk.
-- [ ] GitHub verified-domains page lists the apex.
-- [ ] One real search on the new domain → row lands in the counter SQL (nothing in
+- [x] `curl -sI https://fuel.thomasainsworth.co.uk/` → **301** → whichpump.co.uk.
+- [x] `curl -sI http://whichpump.co.uk` → redirects to **https**. ✅ 2026-09-01, plus path+query preserved on deep links.
+- [x] `gh api repos/taja0001/fuel-calc/pages` → cname whichpump.co.uk, https_enforced true, built.
+- [x] GitHub verified-domains page lists the apex (TXT verified before DNS existed).
+- [x] One real search on the new domain ran live (NG1 5FS → £58.97, 15 rows; postcodes.io + OSRM 200; zero console errors so no CSP block on the beacon — sendBeacon hides from request logs; Tom eyeballs the counter SQL row when convenient). One real search on the new domain → row lands in the counter SQL (nothing in
       the CSP is origin-specific, but verify, don't reason).
-- [ ] New analytics token registers the visit.
+- [x] New analytics token registers the visit (Insights RUM POST → 204).
 - [ ] Add-to-home-screen works; airplane-mode reload works (SW starts clean on the
       new origin — first visit downloads fresh, that's expected).
-- [ ] The 404 page renders at `https://whichpump.co.uk/nowhere` (404.html ships
+- [x] The 404 page renders at `https://whichpump.co.uk/nowhere` ✅ (404.html ships
       before or with the cutover).
-- [ ] `curl -s https://whichpump.co.uk/robots.txt` serves the rules;
+- [x] `curl -s https://whichpump.co.uk/robots.txt` serves the rules; ✅ sitemap 200.
       `/sitemap.xml` fetches and lists the homepage.
 
 ## What users feel (one-time, small — say it in the changelog)

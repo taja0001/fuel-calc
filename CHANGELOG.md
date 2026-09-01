@@ -5,6 +5,74 @@ data, not changes, and aren't listed — there have been 64 of them so far.
 
 ---
 
+## 2026-09-01
+
+**The move finished.** The counter Worker now answers at `counter.whichpump.co.uk`
+(routed under the domain, behind the zone's free rate-limiting) and the page's
+`BEACON` and CSP moved together in one change — the last place a visitor's network
+tab could learn a name. The old `workers.dev` URL stays alive for stale cached
+shells.
+
+**A two-test flake, root-caused after two days of ghosting.** The suite's shared
+setup fires `run()` twice — the GPS callback runs a search and so does the Search
+click — and the readiness gate only waited for rows, so two tests could read the
+readout while the trailing run's £88.88 self-test had it blanked. Proven by catching
+two beacons for one click sequence; the gate now waits for the search to settle.
+Same investigation found a real (self-healing) app race — a quick double-search
+shows stale rows under the self-test for up to 8 seconds — parked on the board.
+64 tests, green three runs straight.
+
+**Search engines formally invited.** whichpump.co.uk enrolled in Google Search
+Console (domain property, TXT-verified), sitemap submitted, homepage put in the
+priority crawl queue; Bing imported the lot. Until the index catches up, AI tools
+grounded in it (Gemini, Copilot) will keep claiming the site doesn't exist — days,
+not hours.
+
+---
+
+## 2026-08-31 (night) — the site moved house
+
+**Fill-Up now lives at `whichpump.co.uk`.** The name won two blind panels of
+simulated first-timers (24/30, then 43/100 against a field including four
+AI-generated newcomers), bought at 21:45, live with a certificate by 23:30. The
+order that mattered: domain verified on GitHub *before* any DNS existed, so the
+takeover class the old domain lived with never touched the new one. The old
+address is a permanent 301 that preserves paths and queries — every shared link
+and installed app keeps working — and `www` folds into the bare domain.
+
+**The scrub.** The page's own header, `og:url` (deliberately absent until a
+permanent domain existed), README, and the analytics token all moved; a new
+`robots.txt` keeps the name-bearing tracked files (plans, notes, LICENSE) out of
+search results and crawlers off the 2 MB price file; a one-URL `sitemap.xml`
+stands ready to grow with the town pages.
+
+**A 404 page in the house voice.** GitHub's default overflowed phones and spoke
+developer-speak. Now the pump display shows the one honest reading a missing page
+has — 404 — with plain words and one button home. 1.7 KB gzipped, zero JavaScript,
+renders even when everything else fails to deploy.
+
+---
+
+## 2026-08-31 (evening) — the header, five panels deep
+
+**The glow dot is gone; a lamp took the job** (board item 2, shipped as C+). The
+badge wears ⛽; a warn lamp and a plain sentence appear only while the hourly feed
+is stale or you're offline, wired through the existing freshness check with the
+same every-exit discipline as the readout snapshot. At rest the header shows
+nothing, which is the point.
+
+**The tagline and headline are panel-tested copy.** Five rounds of simulated
+first-timer panels (20 → 100 → 50 → 75 → 30 voters) landed on the pair: "Where's
+actually cheapest to fill up?" over "Type your postcode. Free, no sign-up: it
+finds the cheapest fill-up near you, counting the fuel to drive there." The
+findings that chose them: "free, no sign-up" is catch-removal, not price
+information; instructions beat slogans; "forecourt" is trade jargon to half of
+Britain; and the crowd's own rewrites converged on words no draft had. The pair
+is load-bearing — the headline never travels without the tagline. `<title>`,
+`og:title` and the meta description moved with them.
+
+---
+
 ## 2026-08-31
 
 **Three features from the board's previewed batch** (items 14, 15, 17; picked from the

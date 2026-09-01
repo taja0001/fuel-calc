@@ -112,10 +112,10 @@ preference: **route the Worker under the new domain** — `counter.whichpump.co.
 **orange-clouded** (separate record from the grey-cloud Pages one, no conflict) —
 which also puts it behind the zone's free WAF rate-limiting.
 
-- [ ] **[TOM]** Decide: route under domain (preferred) or rename the workers.dev
+- [x] **[TOM]** Decided 1 Sep: routed under the domain (preferred path). Decide: route under domain (preferred) or rename the workers.dev
       subdomain (old URL dies instantly — same-commit rule below covers it).
-- [ ] **[TOM]** Cloudflare → Worker → add the route/custom domain.
-- [ ] **[CLAUDE]** One commit changing BOTH together: `BEACON` (index.html line 975)
+- [x] **[TOM]** counter.whichpump.co.uk added on the Worker, Production, whichpump zone (1 Sep).
+- [x] **[CLAUDE]** Edited together 1 Sep (Tom commits): `BEACON` (index.html line 975)
       and the CSP `connect-src` (line 22). Stale cached shells will beacon at the old
       name and fail silently — harmless, by design.
 

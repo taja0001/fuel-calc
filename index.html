@@ -19,7 +19,7 @@
      every hand-edit of the inline script, and a stale hash blanks the entire app —
      too fragile for this repo's edit-and-push workflow. Meta-CSP cannot express
      frame-ancestors or reporting; those need real headers (a Cloudflare proxy). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'unsafe-inline'; img-src 'self'; connect-src 'self' https://api.postcodes.io https://router.project-osrm.org https://cloudflareinsights.com https://search-counter.thomas-ainsworth1.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'unsafe-inline'; img-src 'self'; connect-src 'self' https://api.postcodes.io https://router.project-osrm.org https://cloudflareinsights.com https://counter.whichpump.co.uk; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <title>Fill-Up — where's actually cheapest to fill up?</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Where's actually cheapest to fill up? Pump price plus the fuel you'd burn driving there — free, no sign-up, live government prices for every UK station.">
@@ -973,7 +973,7 @@
   // 2026-08-24), and a browser test holds the line. The Worker's origin also sits in
   // the CSP connect-src at the top of this file — change one, change both, or our
   // own CSP silently blocks the beacon. Empty BEACON = counting off.
-  const BEACON = "https://search-counter.thomas-ainsworth1.workers.dev/";
+  const BEACON = "https://counter.whichpump.co.uk/";
   function areaWord(text){
     const t = String(text || "").trim().toUpperCase();
     if (!t) return "gps";                              // no typed origin = the 📍 button

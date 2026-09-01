@@ -166,7 +166,14 @@ before(async () => {
   await page.goto(base + "/index.html", { waitUntil: "load" });
   await page.locator("#useGps").click();
   await page.locator("#search").click();
-  await page.waitForFunction(() => document.querySelectorAll("#results .station").length > 0,
+  // Rows alone are not "settled": the GPS callback and the search click each fire
+  // run(), and the trailing run's £88.88 self-test blanks the readout while the
+  // first run's rows stand — the 31-Aug/1-Sep two-test flake. Search is settled
+  // only when the button re-enables (run's finally) AND the readout holds a truth.
+  await page.waitForFunction(() =>
+    document.querySelectorAll("#results .station").length > 0 &&
+    !document.getElementById("search").disabled &&
+    !document.querySelector(".readout").classList.contains("empty"),
     null, { timeout: 15000 });
 });
 

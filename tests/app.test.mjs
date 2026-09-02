@@ -643,6 +643,27 @@ test("a stopped feed lights the header lamp and says so; a fresh one shows nothi
   }
 });
 
+// Town-page CTAs arrive as /?pc=AREA (plans/town-pages.md). Same contract as the
+// remembered search: prefill only, the button stays the user's — and the explicit
+// link wins the on-screen prefill without touching what LAST_KEY remembered.
+test("?pc= prefills the postcode, beats the remembered search on screen, never auto-runs", async () => {
+  const p = await page.context().newPage();
+  await p.goto(base + "/index.html", { waitUntil: "load" });
+  await p.evaluate(() => localStorage.setItem("fillup_last_v1",
+    JSON.stringify({ mode: "near", pc: "LS1 4DY", r: 12 })));
+  await p.goto(base + "/index.html?pc=NG18&r=6", { waitUntil: "load" });
+  assert.equal(await p.locator("#postcode").inputValue(), "NG18", "the link's area wins on screen");
+  assert.equal(await p.locator("#radius").inputValue(), "6");
+  await p.waitForTimeout(400);
+  assert.equal(await p.locator("#results .station").count(), 0, "no search ran by itself");
+  assert.ok(!(await p.locator("#search").isDisabled()), "the button waits for the user");
+  assert.equal(await p.evaluate(() =>
+    JSON.parse(localStorage.getItem("fillup_last_v1")).pc), "LS1 4DY",
+    "the remembered search is untouched in storage");
+  await p.evaluate(() => localStorage.clear());
+  await p.close();
+});
+
 test("the first successful search folds the car card — unless Change was pressed", async () => {
   const p = await page.context().newPage();
   await p.goto(base + "/index.html", { waitUntil: "load" });

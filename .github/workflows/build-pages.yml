@@ -1,0 +1,45 @@
+# Rebuilds the /petrol/ area pages and sitemap.xml once a day from the prices the
+# Pi already pushed. Daily, not hourly — SEO doesn't need hourly freshness and the
+# repo shouldn't grow like it does (plans/town-pages.md phase 3).
+#
+# Scheduled OFF the top of the hour: the Pi owns the o'clock. If the Pi pushes
+# mid-run anyway, the rebase-and-retry below absorbs it — file conflicts are
+# impossible (the Pi writes data/ only; this writes petrol/ and sitemap.xml only).
+#
+# Standing rule (security review, 2026-08-23): never make any workflow a REQUIRED
+# status check — that would break the Pi's plain hourly pushes and this one alike.
+name: Build area pages
+
+on:
+  schedule:
+    - cron: "23 4 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Generate pages and sitemap
+        run: node scripts/build-pages.mjs
+      - name: Commit and push if anything changed
+        run: |
+          git config user.name "fuel-price-bot"
+          git config user.email "actions@users.noreply.github.com"
+          if [ -z "$(git status --porcelain petrol sitemap.xml)" ]; then
+            echo "No page changes today."
+            exit 0
+          fi
+          git add petrol sitemap.xml
+          git commit -m "chore: rebuild area pages"
+          git pull --rebase && git push || (git pull --rebase && git push)

@@ -24,17 +24,17 @@ commits.
 
 ## Phase 0 — decisions [TOM], before any build
 
-- [ ] **Slugs.** Recommendation: curated city names for the ~18 unambiguous big
+- [x] **Slugs — DECIDED 3 Sep (demo approved):** Recommendation: curated city names for the ~18 unambiguous big
       areas (`/petrol/nottingham` = NG, `/petrol/leeds` = LS, `/petrol/birmingham`
       = B, London compass areas as `/petrol/london-n` etc.), area-code slugs for the
       rest (`/petrol/dl/`) until tier 2's real city data arrives. People type town
       names; the URL should match.
-- [ ] **The repo-visibility fork closes here.** SEO pages must be public. Shipping
+- [x] **The repo-visibility fork closes here — DECIDED 3 Sep: repo stays public.** SEO pages must be public. Shipping
       them means the repo stays public on GitHub Pages (or the whole site moves to
       Cloudflare Pages first — path B, which also lifts the bandwidth cap). Decide
       before phase 2 ships; changing hosts after 119 URLs are indexed costs a
       redirect exercise.
-- [ ] **Two copy sign-offs** (panel-driven, preview-rule territory): the page H1
+- [x] **Two copy sign-offs — APPROVED 3 Sep as posed on the demo board.** (panel-driven, preview-rule territory): the page H1
       idiom ("Where's cheapest to fill up in Nottingham?" — the visitor's-question
       pattern that won the panels), and the "who runs this" sentence (item 21's
       one-person/no-ads/no-accounts line — wording adjacent to the pseudonymity
@@ -42,12 +42,12 @@ commits.
 
 ## Phase 1 — the preview board [CLAUDE, no commits]
 
-- [ ] `scripts/build-pages.mjs`: reads `data/prices.json`, emits
+- [x] `scripts/build-pages.mjs`: reads `data/prices.json`, emits
       `petrol/<slug>/index.html` per qualifying area (gate: **≥10 stations**,
       malformed areas excluded → 119 pages) plus `petrol/index.html` (the A–Z index
       page) and rewrites `sitemap.xml` (single file — 50k-URL protocol limit is
       nowhere in sight — with `<lastmod>` from the data date).
-- [ ] Render three samples: **Nottingham** (big, curated slug), **Leeds** (big), and
+- [x] Rendered 3 Sep (Nottingham/Leeds/Halifax board, approved). Render three samples: **Nottingham** (big, curated slug), **Leeds** (big), and
       one small-but-qualifying area (e.g. HX, 18 stations) to prove the gate and the
       small-page layout. Screenshot at 360px, both themes, publish the board, Tom
       picks. EC (2 stations) demonstrably excluded.
@@ -76,15 +76,15 @@ thing, no JS needed to read it):**
 
 ## Phase 2 — ship v1 [CLAUDE builds; TOM commits]
 
-- [ ] Generator + the 119 pages + index page + sitemap rewrite, per the picked design.
-- [ ] **The `?pc=` prefill handler in index.html** — new work, verified absent
+- [x] Generator + the 119 pages + index page + sitemap rewrite, per the picked design.
+- [x] **The `?pc=` prefill handler in index.html** — new work, verified absent
       (zero `location.search`/hash handling exists). Hooks into the init block
       right after the LAST_KEY restore so an explicit URL param wins the prefill;
       sanitised; sets the field and **never auto-runs** (the house rule, verbatim
       in the code at the LAST_KEY comment). Storage untouched — LAST_KEY only
       writes on successful searches, so the interplay is naturally safe. Town-page
       CTAs then link `/?pc=NG18` style.
-- [ ] Tests: a node test pinning the generator (deterministic output for a fixture,
+- [x] Tests: a node test pinning the generator (deterministic output for a fixture,
       gate excludes thin areas, malformed postcodes dropped) and a browser test for
       `?pc=` (prefills, never auto-runs, beats LAST_KEY on screen).
 - [ ] Verify: pages render at 360px; `curl` two live URLs post-deploy; sitemap

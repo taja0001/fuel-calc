@@ -1690,6 +1690,18 @@
       }
     }
   } catch {}
+  // Arriving from a town page (/?pc=NG18): prefill the field, exactly like the
+  // remembered search — and like it, NEVER auto-run; the button stays the user's.
+  // Runs after the LAST_KEY restore so the explicit link wins on screen. Storage is
+  // untouched (LAST_KEY only writes on a successful search), so a visitor's own
+  // remembered search survives a stray town-page click.
+  try {
+    const q = new URLSearchParams(location.search);
+    const pc = (q.get("pc") || "").replace(/[^A-Za-z0-9 ]/g, "").trim().slice(0, 10);
+    if (pc) $("postcode").value = pc;
+    const r = parseInt(q.get("r"), 10);
+    if (r >= 1 && r <= 60) $("radius").value = r;
+  } catch {}
   $("carChange").addEventListener("click", () => {
     carUserExpanded = true;
     $("carSummary").hidden = true;

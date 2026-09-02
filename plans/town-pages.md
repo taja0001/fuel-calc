@@ -87,7 +87,9 @@ thing, no JS needed to read it):**
 - [x] Tests: a node test pinning the generator (deterministic output for a fixture,
       gate excludes thin areas, malformed postcodes dropped) and a browser test for
       `?pc=` (prefills, never auto-runs, beats LAST_KEY on screen).
-- [ ] Verify: pages render at 360px; `curl` two live URLs post-deploy; sitemap
+- [x] Verified 3 Sep: croydon + aberdeen + index all 200 on the live domain, sitemap
+      serving 121 URLs, GSC resubmit read same day ("Success, 121 discovered"),
+      Bing nudged. Original list: pages render at 360px; `curl` two live URLs post-deploy; sitemap
       lists 120 URLs; resubmit sitemap in GSC + URL-inspect one page.
 
 ## Phase 3 — the daily bake [CLAUDE writes the workflow; TOM commits]

@@ -195,3 +195,9 @@ by the critics.
     and the readout writes strands the self-test with the old rows painted and
     nothing restores. Move the null to after the readout writes so "render paints
     the truth" is true by construction. *Tiny, pairs with 27's test.*
+29. **The homepage never links to the area pages** (found 3 Sep, the day after they
+    shipped: zero `/petrol/` mentions in index.html). The 119 pages link to the app;
+    nothing flows back, so link authority stops at the homepage. One footer line
+    ("Petrol prices by area") — visible copy, preview first. Sequenced with the
+    trust batch in [seo-levers.md](seo-levers.md) §1. *Tiny.*
+

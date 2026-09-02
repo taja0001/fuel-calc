@@ -136,7 +136,7 @@ stranger's first run, feature gaps, trust — every finding cited against real l
 24. **og:image / og:url.** The Facebook link preview — the campaign's actual first
     screen — is a bare grey text card. One 1200×630 PNG in the readout aesthetic
     (£-figure, tagline, "HM Government data"), `og:image` + `og:url` tags. Costs the
-    shell nothing (scrapers only). **Sequence with the domain migration** — og:url is
+    shell nothing (scrapers only). **UNGATED 2026-09-01** (domain live; og:url shipped in the scrub — only the og:image PNG remains). ~~Sequence with the domain migration~~ — og:url is
     one more place the URL lives. *Small, but gated.*
 
 25. **First-timer tagline** — ✅ **Shipped 2026-08-31, panel-tested.** The header tag is
@@ -158,8 +158,9 @@ stranger's first run, feature gaps, trust — every finding cited against real l
     then confirmation HB 20 · HE 10 · HC 0 (HE = the crowd-authored line; the
     differentiator vote split and the clarity vote consolidated). Synced: `<title>`,
     `og:title`, meta description (now carries free/no-sign-up); the results-panel
-    explainer is where "true cost" gets introduced now. Tests: 6 of 7 runs 64/64
-    green; one run flaked 2 tests, output not captured, not reproduced in 5 retries.
+    explainer is where "true cost" gets introduced now. Tests: the 2-test flake was ROOT-CAUSED 1 Sep
+    (before() double-fires run(); gate waited for rows only) and the gate fixed —
+    64/64 green ×3 since. See items 27/28 for the app-side residue.
     Panel by-products: FILL-UP badge read as "ad label" by 6 of 75 (watch it);
     "fill-up" in any headline needs wrap protection (14 of 75 saw HD shatter).
 
@@ -167,7 +168,7 @@ stranger's first run, feature gaps, trust — every finding cited against real l
 
 The pre-review quick-win batch: trend chart `touch-action:none` scroll dead-zone
 (`pan-y`), GPS button aria-labels, gauge ends "0/1" → "E/F", a `:focus-visible` rule,
-"1 miles" pluralisation, compass tap-target size. And the UX-board leftovers from the
+"1 miles" pluralisation (✅ both halves now: no-results fixed 30 Aug, results-notice fixed 1 Sep), compass tap-target size. And the UX-board leftovers from the
 24 Aug nine-critic review: the journey-mode cluster, area momentum line, trend chart
 plotting the saved fuel (partly done — the chart follows the fuel select since 25 Aug).
 
@@ -179,3 +180,18 @@ with E/F ticks, the geocode "not where you meant?" confessions, and the copy at 
 best: "One postcode is all it needs…", "Not sure about the numbers? Tap the closest
 match…", the offline honesty note. The emoji (📍 🧭) are protected by owner ruling, not
 by the critics.
+
+---
+
+## From the 1 Sep flake investigation (parked here per CHANGELOG)
+
+27. **Double-search shows stale rows under the wiped self-test for up to 8 s.** A
+    queued second run() (GPS-then-Search quickly, or two searches on a slow
+    connection) paints £88.88/empty readout while the previous run's rows stand —
+    the rows-vs-readout honesty rule broken on screen. Self-heals; fix is clearing
+    or dimming #results when the self-test starts. Pin with a delayed-OSRM test.
+    *Small.*
+28. **`restoreReadout = null` sits at render() entry.** Any future throw between it
+    and the readout writes strands the self-test with the old rows painted and
+    nothing restores. Move the null to after the readout writes so "render paints
+    the truth" is true by construction. *Tiny, pairs with 27's test.*

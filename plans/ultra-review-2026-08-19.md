@@ -1,5 +1,12 @@
 # Fuel-calc ultra-review — synthesis
 
+> **Status 2026-09-01:** bugs 1–6 and worth-building 1–3 are long since shipped
+> (see CHANGELOG 22–25 Aug); the run() re-entrancy watch item proved prophetic —
+> see the 1 Sep flake investigation on the review board (items 27/28). Live
+> residue worth carrying: Pi fetch timeouts (pairs with backlog Robustness 1),
+> the two unconfirmed contrast halves, and the watch-list checks. Historical
+> record otherwise.
+
 Seven findings were adversarially verified as real (one partially), none previously known, none overlapping the rejected list. Twelve more are plausible but unverified. Ranked by value per effort within each group. A sequencing note first: **fixing the service-worker bugs forces a `VERSION` bump, and an unverified finding says that bump deletes the user's cached prices** — verify and fix that before shipping any sw.js change.
 
 ## Bugs to fix (all verified)

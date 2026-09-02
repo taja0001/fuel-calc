@@ -1,5 +1,18 @@
 # Security review — outstanding items
 
+> **Update 2026-09-01.** §4 (domain verification): **closed by the migration**,
+> better than asked — whichpump.co.uk was TXT-verified on the account BEFORE any
+> DNS existed, and the old apex is no longer a Pages custom domain, so the takeover
+> class no longer attaches anywhere. §9 (robots.txt): **shipped 31 Aug**, internals
+> disallowed (+ /workflows/ added 1 Sep). §8 (CAA): the answer on file covers the
+> OLD zone only — re-ask it for whichpump.co.uk. Commit counts quoted below are
+> pre-1-Sep snapshots (now 907). **History note, recorded for the next reader:**
+> on 1 Sep six commit messages had their Co-Authored-By trailers stripped via a
+> deliberate, content-byte-identical rewrite (protection lifted for minutes and
+> re-locked, Pi resynced, verified). This was navigation of the "no rewrites"
+> ruling for a message-only change, not an incident — the archive's data history
+> is untouched.
+
 Written **2026-08-23**. A 22-agent review (six lenses, everything adversarially
 verified) found the app itself in good shape — no way in for an outside attacker,
 very little visitor data leaves the browser, none of it reaches the owner. Full

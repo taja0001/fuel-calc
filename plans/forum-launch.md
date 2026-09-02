@@ -1,5 +1,15 @@
 # Plan: first real users — local forums and money sites
 
+> **Update 2026-09-01 — the domain gate is CLEARED.** Site live at
+> `whichpump.co.uk`; the old URL is a permanent 301 (path+query preserved), so
+> "links point at the old name" is handled, not a blocker. The Worker no longer
+> bears a name (`counter.whichpump.co.uk`, behind the zone's WAF rate-limiting —
+> §1b option 1, executed). `robots.txt` now keeps /plans/ and friends out of
+> search, so the plans-expose concern is reduced to fetch-if-you-know-the-URL.
+> support@ is now an open decision, not a gate. **Remaining real gates: repo
+> visibility (§1c), the fine-grained PAT (§1d — still the top security item),
+> and per-venue homework (§3).**
+
 Written **2026-08-25**. Status: **planned, deliberately not started** — the order below
 is the point of this document. The goal: Fill-Up's first strangers, via local Facebook
 groups and the MoneySavingExpert audience, with the doors closed *before* the crowd
@@ -86,7 +96,7 @@ fine-grained PAT — is the one remaining credential job and pairs with any repo
   but a first impression made on fallback estimates is a worse first impression.
   Not a blocker; know it's there; it is the gate on *monetisation* regardless.
 - **First-impression polish:** the remaining quick-win UX batch (chart `touch-action`
-  scroll dead-zone, GPS aria-labels, E/F gauge ends, `:focus-visible`, "1 miles") —
+  scroll dead-zone, GPS aria-labels, E/F gauge ends, `:focus-visible`, ~~"1 miles"~~ ✅ 1 Sep) —
   small, and forum-driven phone users are precisely who hits them.
 - **A feedback channel — DECIDED 2026-08-25:** `support@<the chosen domain>`, created
   once the domain exists. Mechanics: **Cloudflare Email Routing** — free, the DNS zone

@@ -51,7 +51,7 @@ care about traffic at all.
 
 ## Growth: the SEO gap
 
-**The app currently has 112 words of indexable text and mentions not one town.** It holds
+**The app currently has ~112 words of indexable text and mentions not one town.** *(Figure measured pre-31-Aug copy rewrite; the header/tagline changed but the order of magnitude and the no-towns point still stand.)* It holds
 live prices for 7,976 forecourts in every town in Britain, and a search engine sees an
 empty form — every price arrives via JavaScript after render. There's no `robots.txt` and
 no `sitemap.xml`.
@@ -279,7 +279,7 @@ These monetise the **archive** or the **trust**, which do. Roughly nearest-first
 
 1. **Native referrals that are also honest UX — the Costco move.** Costco fuel is
    routinely among the cheapest in a town, already appears in the rankings, and is
-   members-only — which the app doesn't currently say. A "membership required" pill on
+   members-only — ~~which the app doesn't currently say~~ (**pill shipped 31 Aug**, board item 15). A "membership required" pill on
    those rows is a genuine UX improvement *and* the natural home for a referral link.
    Unlike insurance/breakdown affiliates (intent-adjacent), this sits exactly on the
    user's intent at the moment of decision. Same pattern later for EV charging networks.

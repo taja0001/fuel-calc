@@ -1,5 +1,8 @@
 # Future: mpg from a number plate
 
+> **Update 2026-09-01:** sequence step 1 (car presets) shipped 24 Aug. DVLA key
+> application (step 2) remains the live blocker.
+
 Written **2026-07-31**. Most people don't know their car's mpg, and a wrong mpg quietly
 corrupts every figure the app produces — true cost, range warnings, trip cost. This is
 the plan for "type your reg, get a decent mpg".

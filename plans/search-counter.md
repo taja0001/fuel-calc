@@ -1,5 +1,12 @@
 # Plan: count searches (first-party, private)
 
+> **Update 2026-09-01.** The endpoint of record is now `counter.whichpump.co.uk`
+> (Worker routed under the zone, 1 Sep; the workers.dev URL still answers for
+> stale cached shells but is no longer what the app calls). BEACON and the CSP
+> moved together in the same commit, per this plan's own rule. **Phase 2 (weekly
+> digest) is unblocked** — the week of real traffic has elapsed; re-verify
+> Cloudflare's Worker-to-email story at build time (flagged unstable in Aug).
+
 Written **2026-07-31**. Cloudflare's beacon already answers "how many people"
 (dashboard → Web Analytics). It cannot count events, and Zaraz (Cloudflare's event
 tool) needs the site proxied — which would break the GitHub Pages certificate. So

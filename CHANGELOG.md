@@ -1,7 +1,7 @@
 # Changelog
 
 Notable changes to Fill-Up. Newest first. Hourly `chore: update fuel prices` commits are
-data, not changes, and aren't listed — there have been 64 of them so far.
+data, not changes, and aren't listed — there are hundreds of them by now.
 
 ---
 

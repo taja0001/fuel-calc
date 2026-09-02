@@ -21,8 +21,10 @@ not just the sticker price. It runs on live UK prices from the government
 - **Directions** — one tap opens Google Maps navigation to any forecourt.
 - **Location** — postcode, half postcode (NG1), town name (Nottingham), or current location — all via postcodes.io. A fuzzy match is announced ("Showing prices near …") rather than silently trusted.
 - **Private saved car** — mpg / tank / fuel type are saved in your browser only (localStorage). Never uploaded, never in the repo, invisible to anyone else.
-- **Freshness indicator** — the footer shows how long ago the prices last changed.
-- **Price trend** — a small chart of the UK average over the last four weeks, drawn from `data/index.json`: one row per day, maintained by the Pi alongside the prices, ~300 bytes over the wire for a month. Hover for any day; a table view sits underneath for screen readers and sceptics.
+- **Freshness indicator** — the footer shows how long ago the prices last changed;
+  if the hourly feed stops (3+ missed rounds) or you are offline, a warning lamp
+  lights in the header badge and a plain sentence appears under the tagline saying so.
+- **Price trend** — a small chart of the UK average over the last four weeks, drawn from `data/index.json`: one row per day, maintained by the Pi alongside the prices, ~400 bytes over the wire for a month. Hover for any day; a table view sits underneath for screen readers and sceptics.
 - **Price confidence** — a price the feed hasn't confirmed in over a fortnight is badged with its age, rather than shown as though it were current.
 - **Works with no signal** — opens instantly from cache and keeps the last prices you had, which is the situation you're actually in when deciding where to fill up. Location search still works offline; postcode lookup can't, and says so.
 - **Announces its own updates** — a cached app can linger on an old version silently, so when a newer one exists a pill appears: "App updated — tap to refresh". Checked on load and whenever the app returns to the foreground.
@@ -32,8 +34,17 @@ not just the sticker price. It runs on live UK prices from the government
 - **First-party search counter** — one four-word tally per search (mode, outcome, and an
   area no finer than a postcode district like `NG1`, or the literal word `gps`). No IP
   stored, no identifier, nothing that can point at a person; the payload shape is
-  enforced by browser tests and re-checked server-side. Contract and rationale:
-  [plans/search-counter.md](plans/search-counter.md).
+  enforced by browser tests and re-checked server-side (the Worker source lives in
+  `workers/search-counter.js`, deployed at `counter.whichpump.co.uk`). Contract and
+  rationale: [plans/search-counter.md](plans/search-counter.md).
+- **Remembers your last search** — postcode/radius or the whole journey, prefilled on
+  the next visit from localStorage only (same privacy rule as the saved car). Never
+  auto-runs, and a GPS search saves the radius but no location at all.
+- **Costco rows say "members only"** — flagged, never hidden.
+- **Panel-tested copy** — the headline, tagline and their pairing won five rounds of
+  blind simulated-first-timer panels (275 ballots) before shipping.
+- **A 404 page in the house voice** — the pump display shows the status code; one
+  button home; zero JavaScript, renders even mid-broken-deploy.
 
 ## How it works
 
@@ -63,7 +74,12 @@ route for journey mode). Both are cookieless and need no key.
 | `scripts/build-index.mjs` | Maintains the daily index; called by the fetcher after each write. |
 | `scripts/build-prices.mjs` | The fetcher: pulls Fuel Finder, merges, writes `prices.json`. |
 | `scripts/validate-prices.mjs` | Sanity-checks `prices.json`; run by GitHub Actions on every push. |
-| `.github/workflows/validate-prices.yml` | The one live Action. Validates data only — no API access. |
+| `.github/workflows/validate-prices.yml` | Live Action: validates data on every push — no API access. |
+| `.github/workflows/test.yml` | Live Action: runs the browser test suite on app changes. |
+| `404.html` | Custom 404 in the pump-display voice — served by Pages for any bad path. |
+| `robots.txt` / `sitemap.xml` | Crawler rules (internals kept out of search) and the one-URL sitemap, submitted to Google + Bing. |
+| `CNAME` | The custom domain (`whichpump.co.uk`) — read by GitHub Pages. |
+| `workers/search-counter.js` | The search counter Worker, deployed at `counter.whichpump.co.uk`. |
 | `workflows/update-prices.yml` | **Parked, does nothing.** Not in `.github/`, so GitHub never reads it. Kept as a record of why Actions can't do the fetch. |
 | `pi/README.md` | The contract the Pi's off-repo runner must honour — step order and the post-push heartbeat. |
 | `CHANGELOG.md` | What's changed and when. |
@@ -224,8 +240,8 @@ Without this the site keeps serving older and older prices and nothing says so. 
 things cover it:
 
 - **In the app** — past 3 hours since the last update (the Pi pushes hourly), the
-  footer turns amber and a warning appears above the results telling you to check the
-  price at the pump.
+  footer turns amber, a warn lamp lights in the header badge, and a sentence appears
+  under the tagline telling you to check the price at the pump.
 - **By email** — create a check at [healthchecks.io](https://healthchecks.io) (free),
   set its period to 1 hour, and put its ping URL in `~/fuel/secrets.env`:
 
@@ -290,9 +306,13 @@ to get a client ID and secret, then put them in `~/fuel/secrets.env` on the Pi.
 
 ## Custom domain
 
-Served at `whichpump.co.uk` via GitHub Pages. DNS is a Cloudflare apex `CNAME`
+Served at `whichpump.co.uk` via GitHub Pages (Enforce HTTPS on; the domain is
+verified on the GitHub account via a permanent TXT record, added BEFORE any DNS
+existed so the takeover class never applied). DNS is a Cloudflare apex `CNAME`
 (flattened) → `taja0001.github.io`, set to **DNS-only (grey cloud)** so GitHub can
 issue its own HTTPS certificate. (Proxying through Cloudflare blocks the cert.)
+`www` folds into the bare domain, and `whichpump.uk` is held defensively (both
+registered via Cloudflare Registrar).
 The old `fuel.thomasainsworth.co.uk` is a permanent Cloudflare 301 to the new
 domain, path and query preserved — it stays that way for years so every old
 link and installed app keeps working.

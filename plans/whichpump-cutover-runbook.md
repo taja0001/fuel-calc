@@ -87,11 +87,11 @@ Every place the old name/URL lives in served files, found by grep tonight:
       ```
 
 - [x] **[CLAUDE]** New `sitemap.xml` — one URL today (`https://whichpump.co.uk/`),
-      grows with the town pages. Submit it to Search Console/Bing in the SEO phase,
-      not here.
+      grows with the town pages. Submitted to Search Console AND Bing 1 Sep — done ahead of the
+      original SEO-phase sequencing.
 - [x] These two files are written AT phase 5, not before — their URLs reference the
       new domain and would dangle on the old one.
-- [ ] NOT in this commit: BEACON/CSP (phase 7 moves them together).
+- [x] BEACON/CSP deliberately excluded here; moved together in phase 7 (done 1 Sep).
 
 ## Phase 6 — the old domain becomes a redirect, for years (10 min)
 
@@ -112,8 +112,8 @@ preference: **route the Worker under the new domain** — `counter.whichpump.co.
 **orange-clouded** (separate record from the grey-cloud Pages one, no conflict) —
 which also puts it behind the zone's free WAF rate-limiting.
 
-- [x] **[TOM]** Decided 1 Sep: routed under the domain (preferred path). Decide: route under domain (preferred) or rename the workers.dev
-      subdomain (old URL dies instantly — same-commit rule below covers it).
+- [x] **[TOM]** Decided 1 Sep: routed under the domain (the preferred path; the
+      workers.dev URL stays alive for stale cached shells by design).
 - [x] **[TOM]** counter.whichpump.co.uk added on the Worker, Production, whichpump zone (1 Sep).
 - [x] **[CLAUDE]** Edited together 1 Sep (Tom commits): `BEACON` (index.html line 975)
       and the CSP `connect-src` (line 22). Stale cached shells will beacon at the old

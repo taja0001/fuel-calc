@@ -1,5 +1,15 @@
 # Backlog
 
+> **Update 2026-09-01.** Domain migration: ✅ done (whichpump.co.uk live, old URL
+> 301s — the "before saved postcodes" ordering constraint is satisfied and dead).
+> Forum-launch is gated only on repo visibility + PAT + venue homework now. The
+> review board runs to 26 items; open set is 3, 8, 12, 13, 16, 18, 19–23, 24
+> (og:image half — og:url shipped). Security list: ① ③ ④ closed, ② PAT and ⑤
+> 2FA/DNS remain. Remembered-last-search shipped 31 Aug (softens the "every search
+> starts by typing" friction claim; Home/Work chips themselves still open). The
+> counter Phase 2 digest date has arrived — unblocked. Payload measured 1 Sep:
+> ~37 KB gz shell + ~427 KB gz prices.
+
 Everything known-but-not-done, as of **2026-07-30**; **audited against the code
 2026-08-24** — items found shipped are marked ✅ in place rather than deleted, so the
 original reasoning stays readable. Nothing here is urgent; the app is in a good state.
@@ -183,3 +193,11 @@ verified properly rather than reasoned about:
   found four bugs that reasoning had missed: the `Â£0.00` charset corruption, the
   `navigator.onLine` false signal, the raw "Failed to fetch" shown offline, and the
   `Esson'S` title-casing.
+
+## Ultra-review residue (folded in 2026-09-02 — the source file is now historical)
+
+- Pi fetcher fetch timeouts — pairs with Robustness 1 above; same fix session.
+- Two unconfirmed contrast halves from the 19 Aug accessibility pass.
+- The four watch-list checks (see ultra-review-2026-08-19.md §watch-list) — cheap
+  to re-run after any render() change; the 1 Sep flake proved the re-entrancy one
+  had teeth (board items 27/28).

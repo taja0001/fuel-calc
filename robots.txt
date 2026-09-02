@@ -5,6 +5,7 @@ Disallow: /pi/
 Disallow: /tests/
 Disallow: /scripts/
 Disallow: /workers/
+Disallow: /workflows/
 Disallow: /data/
 Disallow: /LICENSE
 Disallow: /README.md

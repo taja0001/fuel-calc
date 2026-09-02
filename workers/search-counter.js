@@ -13,8 +13,9 @@
 //   1. Cloudflare dashboard -> Workers & Pages -> Create -> paste this file -> Deploy.
 //   2. The new Worker -> Settings -> Bindings -> Add -> Analytics Engine dataset,
 //      variable name SEARCHES.
-//   3. Paste the *.workers.dev URL back to Claude — step 6 wires it into the app
-//      (the BEACON constant AND the CSP connect-src list in index.html).
+//   3. Settings -> Domains & Routes -> Add -> Custom domain -> counter.whichpump.co.uk
+//      (the app's BEACON constant AND the CSP connect-src both point there since
+//      1 Sep 2026 — if either changes they move TOGETHER, or beacons die silently).
 //
 // Reading the numbers: dashboard -> Storage & Databases -> Analytics Engine -> SQL:
 //   searches by area, last 7 days:

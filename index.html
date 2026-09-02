@@ -1529,7 +1529,7 @@
       more.className = "notice";
       more.textContent = ctx.mode === "journey"
         ? `Showing the ${shown.length} best-value of ${ctx.found} near your route.`
-        : `Showing the ${shown.length} best-value of ${ctx.found} within ${ctx.radius} miles — lower the radius for fewer, closer results.`;
+        : `Showing the ${shown.length} best-value of ${ctx.found} within ${ctx.radius} mile${ctx.radius == 1 ? "" : "s"} — lower the radius for fewer, closer results.`;
       res.appendChild(more);
     }
 

@@ -9,16 +9,16 @@ not just the sticker price. It runs on live UK prices from the government
 
 ## Features
 
-- **True-cost ranking** — forecourts scored on fill cost plus the fuel to drive there (and back), using **real road distances**, so a cheap-but-far station is judged fairly against a dearer one nearby.
+- **True-cost ranking** — petrol stations scored on fill cost plus the fuel to drive there (and back), using **real road distances**, so a cheap-but-far station is judged fairly against a dearer one nearby.
 - **Two modes:**
   - **Near me** — cheapest fill-ups within a radius of a postcode or your current location.
   - **Plan a journey** — enter a start and destination and it finds the cheapest fill-up **on the way**, ranked by pump price plus the small detour off your route. It also says what the trip itself will cost: "this 280 mile trip will burn about 33 L — around £50 at the best price on your route".
 - **Minutes, not just miles** — every distance carries drive time ("2.6 mi · 7 min away"), from the same routing requests. When routing is unavailable and distances are estimates, minutes are omitted rather than invented.
-- **What the search saved you** — "£0.75 cheaper than your nearest (Sainsbury's · 1.4 mi · 4 min)": the comparison against just driving to the closest open forecourt, which is what people do without the app.
+- **What the search saved you** — "£0.75 cheaper than your nearest (Sainsbury's · 1.4 mi · 4 min)": the comparison against just driving to the closest open petrol station, which is what people do without the app.
 - **Fuel level like the dash shows it** — quick buttons for the quarters, plus a slider marked like a real gauge (0–1, ticks at every eighth) with a live litres-to-fill readout. Feeds the fill cost and the journey range estimate alike.
-- **Open now** — just under half of UK forecourts close at some point, so a closed one is greyed out, marked with when it opens, and can never be ranked best value. Motorway services are labelled too.
+- **Open now** — just under half of UK petrol stations close at some point, so a closed one is greyed out, marked with when it opens, and can never be ranked best value. Motorway services are labelled too.
 - **Cheapest by brand** — two lists, Supermarkets and Fuel brands, sorted cheapest-first. Brand-name variants are merged (e.g. `BP` / `BP OIL UK` / `BP HARVEST ENERGY` → one **BP**), and each brand row taps to expand its individual branches.
-- **Directions** — one tap opens Google Maps navigation to any forecourt.
+- **Directions** — one tap opens Google Maps navigation to any petrol station.
 - **Location** — postcode, half postcode (NG1), town name (Nottingham), or current location — all via postcodes.io. A fuzzy match is announced ("Showing prices near …") rather than silently trusted.
 - **Private saved car** — mpg / tank / fuel type are saved in your browser only (localStorage). Never uploaded, never in the repo, invisible to anyone else.
 - **Freshness indicator** — the footer shows how long ago the prices last changed;
@@ -69,7 +69,7 @@ route for journey mode). Both are cookieless and need no key.
 | Path | Purpose |
 |------|---------|
 | `index.html` | The whole app — UI and logic in one file. |
-| `data/prices.json` | Current prices for ~8,000 UK forecourts. Written by the Pi. |
+| `data/prices.json` | Current prices for ~8,000 UK petrol stations. Written by the Pi. |
 | `data/index.json` | The daily price index — one national-average row per day. Written by the Pi, backfillable from git history (`node scripts/build-index.mjs --backfill`). |
 | `scripts/build-index.mjs` | Maintains the daily index; called by the fetcher after each write. |
 | `scripts/build-prices.mjs` | The fetcher: pulls Fuel Finder, merges, writes `prices.json`. |
@@ -118,8 +118,8 @@ Three more fields ride along, all short because they're on every record:
 
 | Field | Meaning |
 |---|---|
-| `o` | Opening hours. `1` = 24/7; otherwise seven `[open, close]` pairs in minutes from midnight, Monday first. A 24-hour day is `[0, 1440]`, and `close < open` means it shuts after midnight. **Absent means the feed didn't say, and the app treats unknown as open** — better to show a forecourt that might be shut than hide one that's serving. |
-| `sm` | Present (`1`) if the feed flags it a supermarket forecourt. Omitted otherwise. |
+| `o` | Opening hours. `1` = 24/7; otherwise seven `[open, close]` pairs in minutes from midnight, Monday first. A 24-hour day is `[0, 1440]`, and `close < open` means it shuts after midnight. **Absent means the feed didn't say, and the app treats unknown as open** — better to show a petrol station that might be shut than hide one that's serving. |
+| `sm` | Present (`1`) if the feed flags it a supermarket petrol station. Omitted otherwise. |
 | `mw` | Present (`1`) if it's motorway services. Omitted otherwise. |
 | `pu` | When the price last moved, in **minutes since the epoch** (8 digits, versus 24 for an ISO string; a minute is finer than "changed 3 hours ago" needs). One number when every grade at the station moved together, or an object keyed by grade when they didn't — the fetcher picks whichever the data requires rather than assuming. Absent means no usable timestamp. |
 
@@ -128,7 +128,7 @@ older than 14 days with a dashed "Price 3 weeks old" badge, so a figure nobody h
 confirmed since last season doesn't get presented with the same confidence as one from
 an hour ago. Each run logs the age spread, so a drift towards staleness is visible.
 
-Roughly half of all forecourts close at some point, so without `o` the app would
+Roughly half of all petrol stations close at some point, so without `o` the app would
 cheerfully recommend a shut one at midnight.
 
 ### Bad records
@@ -136,7 +136,7 @@ cheerfully recommend a shut one at midnight.
 A few of the ~8,000 records in the feed are malformed, and they matter more than their
 number suggests:
 
-- **Prices in pounds.** Around eight forecourts report `1.309` rather than `130.9`.
+- **Prices in pounds.** Around eight petrol stations report `1.309` rather than `130.9`.
   Read as pence, that station is 100× cheaper than anything else and wins every
   ranking outright. Prices outside **50–400p per litre** are dropped.
 - **Broken coordinates.** A handful have latitude and longitude swapped, or the
@@ -198,7 +198,7 @@ GitHub Actions on every push that touches the app:
   reprice independently.
 - **Browser** — Playwright drives the real `index.html` against fixture data with the
   external services mocked and the clock pinned to 23:15, asserting the things that
-  once regressed by hand: a closed forecourt with the lowest total never taking the
+  once regressed by hand: a closed petrol station with the lowest total never taking the
   top spot, the greying and pills, brand folding ("Kirkby Motors" is not Moto), slider
   eighths reaching the maths, and a failed refresh keeping real data rather than
   swapping in samples. The service worker is blocked in this suite — Playwright's
@@ -324,7 +324,7 @@ link and installed app keeps working.
 - A supermarket showing under "Fuel brands" is no longer a manual fix: the split now
   uses the feed's own `is_supermarket_service_station` flag. The old `SUPERMARKETS`
   name list survives only as a fallback for data written before the flag was captured,
-  and it missed 30% of supermarket forecourts because plenty don't trade under a
+  and it missed 30% of supermarket petrol stations because plenty don't trade under a
   supermarket's name.
 - Rotating the API secret? Update `~/fuel/secrets.env` on the Pi. Nothing in the repo
   changes.

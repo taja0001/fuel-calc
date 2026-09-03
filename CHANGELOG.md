@@ -22,6 +22,22 @@ Design previewed on real Nottingham/Leeds/Halifax pages and picked before shippi
 exactly like the remembered search: the button stays the user's, and what LAST_KEY
 remembered survives in storage. (70 tests, green twice.)
 
+**The site explains itself before you search.** A static "About Fill-Up" section now
+sits under the trend chart from first paint — how true cost is worked out (and that
+distances are real OSRM routes, estimated only when routing is down), where the
+prices come from (retailer-reported to Fuel Finder, fetched hourly, anything
+unconfirmed for a fortnight wears its age badge), and who runs this ("one person, not
+a company… no ads, no accounts" — Tom's wording). The methodology used to be rebuilt
+inside the results on every search, so a sceptic auditing before searching found
+nothing. The footer gains the one line the area pages were missing: "Petrol prices
+by area" → `/petrol/`. And the sample-data fallback stopped talking like a developer:
+"Live prices couldn't be loaded just now" instead of "once the Fuel Finder fetcher is
+set up", a search that finds nothing against the eight sample stations says "Prices
+unavailable" rather than a false "No forecourts", and the next search retries the
+feed instead of keeping the sample for the session. Previewed as a before/after board
+and picked item by item; the "Price feed updated" label change was offered and
+declined. (72 tests.)
+
 ---
 
 ## 2026-09-01

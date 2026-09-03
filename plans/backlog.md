@@ -1,5 +1,10 @@
 # Backlog
 
+> **Update 2026-09-03.** The trust batch shipped from the review board (static About
+> section, footer link to `/petrol/`, honest sample-data fallback): items 20, 21, 23, 29 ✅,
+> 19 closed as covered, 22 half-declined by Tom (the label stays). Board open set is now
+> 3, 8, 12, 13, 16, 18, 27, 28. First daily bake proved 3 Sep.
+>
 > **Update 2026-09-01.** Domain migration: ✅ done (whichpump.co.uk live, old URL
 > 301s — the "before saved postcodes" ordering constraint is satisfied and dead).
 > Forum-launch is gated only on repo visibility + PAT + venue homework now. The

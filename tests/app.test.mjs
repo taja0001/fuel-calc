@@ -978,3 +978,65 @@ test("no two preset chips share a mpg+tank pair, in either fuel", async () => {
   await p.evaluate(() => localStorage.clear());
   await p.close();
 });
+
+// --- the trust batch (review-board items 20 / 21 / 23 / 29, picked 3 Sep) -----------
+
+test("the About section is static from first paint and the methodology left the results", async () => {
+  // The shared page has already searched, so both halves are checkable at once: the
+  // static section exists regardless, and render() no longer appends its own copy.
+  const s = await page.evaluate(() => ({
+    summaries: [...document.querySelectorAll("#about details.how summary")].map(e => e.textContent),
+    inResults: document.querySelectorAll("#results details").length,
+    who: document.querySelector("#about details:last-of-type p").textContent.replace(/\s+/g, " "),
+    areaLink: document.querySelector("footer .areas a")?.getAttribute("href"),
+  }));
+  assert.deepEqual(s.summaries, ['How is "true cost" worked out?', "Where do the prices come from?",
+    "Who runs this, and why is it free?"]);
+  assert.equal(s.inResults, 0, "render() must not rebuild the methodology per search");
+  assert.match(s.who, /one person, not a company/);
+  assert.doesNotMatch(s.who, /Raspberry|Pi\b/, "Tom's wording: no hardware in the copy");
+  assert.equal(s.areaLink, "/petrol/", "the homepage links to the area pages (item 29)");
+});
+
+test("sample data: honest wording, no false miss, and the next search retries the feed", async () => {
+  // Nothing loaded, nothing cached (the SW is blocked): the app falls back to the
+  // 8-station Nottingham sample. The fixture's ORIGIN sits among them; "ZZ9" geocodes
+  // 20 miles north, where the sample has nothing — the Glasgow case in miniature.
+  const pattern = "**/data/prices.json";
+  const down = r => r.abort();
+  await page.context().route(pattern, down);
+  const p = await page.context().newPage();
+  await p.clock.setFixedTime(FIXED);
+  try {
+    await p.goto(base + "/index.html", { waitUntil: "load" });
+    await p.fill("#postcode", "NG1 1AA");
+    await p.locator("#search").click();
+    await p.waitForFunction(() => !document.getElementById("search").disabled &&
+      document.querySelectorAll("#results .station").length > 0, null, { timeout: 15000 });
+    const note = await p.locator("#msg").textContent();
+    assert.match(note, /couldn't be loaded just now/, "human wording, not fetcher-speak");
+    assert.match(note, /sample prices/, "and still honest that these are samples");
+    assert.doesNotMatch(note, /fetcher/);
+
+    await p.fill("#postcode", "ZZ9 9ZZ");
+    await p.locator("#search").click();
+    await p.waitForFunction(() => !document.getElementById("search").disabled &&
+      document.getElementById("bestWhere").textContent === "Prices unavailable", null, { timeout: 15000 });
+    assert.match(await p.locator("#msg").textContent(), /couldn't be loaded just now/,
+      "an empty result against the sample blames the feed, never the area");
+    assert.doesNotMatch(await p.locator("#msg").textContent(), /No forecourts/);
+
+    // Signal returns: the very next search must fetch the real prices, not keep the sample.
+    await page.context().unroute(pattern, down);
+    await p.fill("#postcode", "NG1 1AA");
+    await p.locator("#search").click();
+    await p.waitForFunction(() => !document.getElementById("search").disabled &&
+      document.querySelectorAll("#results .station").length === 7, null, { timeout: 15000 });
+    assert.equal(await p.locator("#msg").textContent(), "", "no sample note once real prices load");
+    assert.match(await p.locator("#freshness").textContent(), /Prices updated/,
+      "the footer stamp comes back with the real feed");
+  } finally {
+    await page.context().unroute(pattern, down).catch(() => {});
+    await p.close();
+  }
+});

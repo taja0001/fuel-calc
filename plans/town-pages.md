@@ -114,6 +114,9 @@ thing, no JS needed to read it):**
   root only (the sw.js comment literally anticipated "any future same-origin page
   at /foo/"), town pages cache under their own URLs, the update toast won't spam.
   They're not precached, so a first-ever offline visit to a town page fails — fine.
+- [x] **First bake landed 2026-09-03** — `fuel-price-bot` commit eb18aa1, 119 files, run
+      took 15 s. It fired at 08:59 UTC, not 04:23: GitHub's usual scheduled-run lag on a
+      quiet repo, not a fault — expect the hour to wander.
 - [ ] Watch the first week's repo growth (daily delta of 119 small HTML files —
       git delta-compresses same-shape changes well; measure, don't assume) and the
       GSC coverage report as pages enter the index.

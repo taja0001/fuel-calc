@@ -108,24 +108,40 @@ stranger's first run, feature gaps, trust — every finding cited against real l
 
 ## Trust (launch-relevant — sequence with forum-launch.md)
 
-19. **Government-data credential invisible until the footer.** Extend the header tag
+19. ✅ **Closed 2026-09-03 as covered by the About section** (its "Where do the prices come
+    from?" row carries the credential). The header line itself ("Live government prices,
+    updated hourly.") was previewed and **declined by Tom** — the panel-tested header stays
+    untouched. **Government-data credential invisible until the footer.** Extend the header tag
     line: "Pump price plus the fuel to drive there and back — live government prices,
     updated hourly." ("Hourly" is true and policed by STALE_HOURS.) *Small.*
-20. **The methodology explainer only exists after a search.** `details.how` is appended
+20. ✅ **Shipped 2026-09-03** — static `#about` section after the trend chart (three
+    collapsed `details.how`, Tom picked collapsed over open prose); render() no longer
+    rebuilds it; the OSRM/OpenStreetMap provenance sentence added. Pinned by a test.
+    **The methodology explainer only exists after a search.** `details.how` is appended
     at the end of render(); the sceptic audits before searching. Make it static markup
     present from first paint (under the car card or above the footer); stop rebuilding
     it per render; add one provenance sentence (retailers' own hourly reports; real road
     routes via OSRM/OpenStreetMap). *Small.*
-21. **"Who runs this, and why is it free?"** A second static `<details>`: built and run
+21. ✅ **Shipped 2026-09-03 with Tom's wording:** "Built and run by one person, not a
+    company. It stays free because it costs almost nothing to run. No ads, no accounts."
+    He struck the Raspberry Pi from the draft; no name, no privacy line (the 24 Aug ruling
+    stands, the optional privacy sentence was offered and not taken). **"Who runs this, and why is it free?"** A second static `<details>`: built and run
     by one person; stays free because a static page fed by a Raspberry Pi costs almost
     nothing; no ads, no accounts. Deliberately no personal name (forum-launch
     pseudonymity). NOTE: this is NOT the footer privacy disclosure Thomas ruled out on
     2026-08-24 — but it's adjacent; get his explicit yes on the wording. *Small.*
-22. **"Prices updated 8m ago" over-promises** — that's the feed timestamp, while ~3% of
+22. **Half shipped, half declined 2026-09-03.** The retailer-reported / age-badge sentence
+    lives in the About section's prices row. The label change to "Price **feed** updated"
+    was previewed and **declined by Tom — "Prices updated" stays. Don't re-propose.**
+    **"Prices updated 8m ago" over-promises** — that's the feed timestamp, while ~3% of
     prices are weeks old. One word: "Price **feed** updated 8m ago", plus one footer
     sentence noting prices are retailer-reported and anything unconfirmed for a
     fortnight wears an age badge. *Small.*
-23. **The sample-data fallback shows dev-speak and fails silently outside Nottingham.**
+23. ✅ **Shipped 2026-09-03, all three halves** — human wording ("Live prices couldn't be
+    loaded just now…"), an empty result against the sample set says "Prices unavailable"
+    instead of a false "No forecourts", and `loadStations()` retries on every run() while
+    the sample is loaded. Pinned by a test that takes the feed down, searches twice, brings
+    it back and watches the real rows arrive. **The sample-data fallback shows dev-speak and fails silently outside Nottingham.**
     (Two lenses hit this independently.) "…once the Fuel Finder fetcher is set up" reads
     as "this site isn't finished"; worse, the sample notice only renders on the has-rows
     path, so a Glasgow search against the 8-station sample shows a confident false "No
@@ -195,7 +211,8 @@ by the critics.
     and the readout writes strands the self-test with the old rows painted and
     nothing restores. Move the null to after the readout writes so "render paints
     the truth" is true by construction. *Tiny, pairs with 27's test.*
-29. **The homepage never links to the area pages** (found 3 Sep, the day after they
+29. ✅ **Shipped 2026-09-03** — footer line "Petrol prices by area" → `/petrol/` (Tom picked
+    the plain wording over the towns list). **The homepage never links to the area pages** (found 3 Sep, the day after they
     shipped: zero `/petrol/` mentions in index.html). The 119 pages link to the app;
     nothing flows back, so link authority stops at the homepage. One footer line
     ("Petrol prices by area") — visible copy, preview first. Sequenced with the

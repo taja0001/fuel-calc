@@ -273,6 +273,15 @@
   details.how summary{cursor:pointer;font-size:13px;color:var(--amber);font-weight:600;}
   details.how p{font-size:13px;color:var(--ink-soft);}
 
+  .about{margin-top:26px;padding:14px 16px 12px;background:var(--panel);border:1px solid var(--hair);
+    border-radius:14px;box-shadow:0 1px 2px rgba(20,15,8,.05);}
+  .about h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 6px;font-weight:700;}
+  .about details.how{margin-top:0;padding:7px 0;border-top:1px solid var(--hair);}
+  .about details.how:first-of-type{border-top:0;}
+  .about details.how p{margin:8px 0 2px;line-height:1.5;}
+  .about p a{color:var(--amber);}
+  footer .areas{margin-bottom:8px;font-size:13px;}
+  footer .areas a{font-weight:600;}
   footer{text-align:center;color:var(--ink-soft);font-size:12px;margin-top:22px;line-height:1.6;}
   footer a{color:var(--amber);}
   #freshness{font-weight:600;margin-bottom:6px;}
@@ -460,8 +469,35 @@
     <details class="trend-data"><summary>the numbers</summary><div id="trendTable"></div></details>
   </figure>
 
+  <!-- Static from first paint so a sceptic can audit BEFORE searching (review board items
+       19–23, previewed and picked 3 Sep 2026). The methodology used to be rebuilt inside
+       #results on every render, so it only existed after a search. The who-runs-this
+       wording is Tom's — no name (forum-launch pseudonymity), no Pi, no privacy line. -->
+  <section class="about" id="about" aria-labelledby="aboutH">
+    <h2 id="aboutH">About Fill-Up</h2>
+    <details class="how"><summary>How is "true cost" worked out?</summary>
+      <p>Fill cost = litres needed to top up × pump price. Trip cost = the fuel you burn driving
+      there and back (real road distance ÷ your mpg × pump price). True cost is the two added together,
+      so a cheap-but-far station is judged fairly against a dearer one nearby. Road distances are real
+      routes from <a href="https://project-osrm.org" target="_blank" rel="noopener noreferrer">OSRM</a> on
+      <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>
+      data; if routing is unavailable the app estimates from straight-line distance and says so.</p></details>
+    <details class="how"><summary>Where do the prices come from?</summary>
+      <p>Every UK petrol station reports its prices to the government's
+      <a href="https://www.fuel-finder.service.gov.uk" target="_blank" rel="noopener noreferrer">Fuel Finder</a>
+      scheme, and a small computer here fetches the whole feed every hour. Prices are retailer-reported:
+      most change daily, a few sit unconfirmed for weeks, and anything not confirmed for a fortnight wears
+      an age badge in the results so you can weigh it yourself.</p></details>
+    <details class="how"><summary>Who runs this, and why is it free?</summary>
+      <p>Built and run by one person, not a company. It stays free because it costs almost nothing
+      to run. No ads, no accounts.</p></details>
+  </section>
+
   <footer id="foot">
     <div id="freshness"></div>
+    <!-- The 119 area pages link to the app; without this line nothing flowed back
+         (board item 29, found 3 Sep). -->
+    <div class="areas"><a href="/petrol/">Petrol prices by area</a></div>
     Prices from the UK Government <a href="https://www.fuel-finder.service.gov.uk" target="_blank" rel="noopener noreferrer">Fuel Finder</a> scheme.
     Driving distances via <a href="https://project-osrm.org" target="_blank" rel="noopener noreferrer">OSRM</a>, using
     <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> data
@@ -802,7 +838,9 @@
   }
 
   async function loadStations(force){
-    if (stations.length && !force) return;
+    // A sample-data load is a failure we recovered from, not data we have: retry it on
+    // every run() so the first search after the signal returns gets real prices.
+    if (stations.length && !force && dataGeneratedAt !== "sample") return;
     try {
       // "no-cache" (not no-store) — always check with the server, but let it answer
       // 304 Not Modified so an unchanged file isn't re-downloaded. Prices stay live;
@@ -827,10 +865,10 @@
       // that fails — resumed with no signal and an evicted cache — must keep the real
       // stations it already has; replacing 7,976 of them with 8 fakes because the user
       // glanced at the app in a car park would be strictly worse than doing nothing.
-      if (!stations.length) {
+      if (!stations.length || dataGeneratedAt === "sample") {
         stations = SAMPLE.stations;
         dataGeneratedAt = "sample";
-        dataNote = "Showing <b>sample prices</b> — live data appears once the Fuel Finder fetcher is set up.";
+        dataNote = "Live prices couldn't be loaded just now, so these are <b>sample prices</b> for a few Nottingham stations. Try again in a minute.";
       } else {
         // Kept the data we had. The fetch throwing at all means the network is
         // unreachable, so the footer should say "offline", not blame the feed.
@@ -1339,6 +1377,18 @@
       // The user's fuel in words, not the feed's grade code — "premium diesel", never
       // "B7P". And no "radius… radius" repetition.
       const fw = FUEL_WORD[ctx.fuel] || ctx.fuel;
+      // Against the 8-station sample set, a Glasgow search finds nothing — that's the
+      // feed failing, not Glasgow lacking petrol stations. Say the true thing.
+      if (dataGeneratedAt === "sample"){
+        setMsg("Live prices couldn't be loaded just now. Try again in a minute.", true);
+        res.innerHTML = "";
+        document.querySelector(".readout").classList.add("empty");
+        $("bestTotal").textContent = "£--.--";
+        $("bestWhere").textContent = "Prices unavailable";
+        $("bestSub").textContent = "Nothing to compare until the live prices load.";
+        $("bestSave").textContent = "";
+        return;
+      }
       setMsg(ctx.mode === "journey"
         ? `No forecourts selling ${fw} within reach of your route. A bigger detour might.`
         : `No forecourts selling ${fw} within ${ctx.radius} mile${ctx.radius == 1 ? "" : "s"}. Try widening the search.`, true);
@@ -1623,14 +1673,6 @@
 
     brandSection("Supermarkets", brands.filter(e => e.isSuper));
     brandSection("Fuel brands", brands.filter(e => !e.isSuper));
-
-    const how = document.createElement("details");
-    how.className = "how";
-    how.innerHTML = `<summary>How is "true cost" worked out?</summary>
-      <p>Fill cost = litres needed to top up × pump price. Trip cost = the fuel you burn driving there and back
-      (real road distance ÷ your mpg × pump price). True cost is the two added together, so a cheap-but-far station is
-      judged fairly against a dearer one nearby.</p>`;
-    res.appendChild(how);
 
     // The headline updates ABOVE the viewport on a phone — the user taps search next
     // to the results and the big answer changes out of sight. Only scrolls if needed.

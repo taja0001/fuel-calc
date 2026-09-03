@@ -11,7 +11,7 @@ Legend: **[TOM]** clicks/decisions · **[CLAUDE]** builds, Tom commits.
 
 ## 1. Homepage → area pages link — the missing plumbing *(small, do first)*
 
-- [ ] **[CLAUDE, previewed]** The homepage links to `/petrol/` **zero times**
+- [x] **Shipped 2026-09-03** (footer line "Petrol prices by area"). The homepage linked to `/petrol/` **zero times**
       (verified 3 Sep) — the 119 pages link to the app but nothing flows back, so
       backlink authority landing on the homepage never reaches them. One footer
       line ("Petrol prices by area") fixes it and gives humans a route in. Visible
@@ -19,8 +19,9 @@ Legend: **[TOM]** clicks/decisions · **[CLAUDE]** builds, Tom commits.
 
 ## 2. The how-it-works section — trust batch and content in one *(the double win)*
 
-- [ ] **[CLAUDE, previewed]** The homepage still holds ~112 words of crawlable
-      text. The review board's trust batch (**items 19–23**: provenance, freshness
+- [x] **Shipped 2026-09-03** as the static About section (items 20/21/23/29 done, 19
+      closed as covered, 22's label half declined by Tom). ~180 more crawlable words. The homepage held ~112 words of crawlable
+      text (measured 3 Sep, before the section). The review board's trust batch (**items 19–23**: provenance, freshness
       honesty, who-runs-this, methodology) IS the missing content — one honest
       section answers the panels' loudest unfixed complaint and gives Google
       something to read, in one previewed batch. Copy sign-offs (who-runs-this
@@ -62,5 +63,5 @@ honesty is the brand; every page must stay genuinely useful or not exist.
 
 ## Sequencing in one line
 
-1 + 2 as one previewed batch now (in-house, nothing gates them) → Tom's PAT unlocks
+~~1 + 2 as one previewed batch now~~ ✅ 3 Sep → Tom's PAT unlocks
 3 → 4 and 5 ride along whenever → 6 waits for data by design.

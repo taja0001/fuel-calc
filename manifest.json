@@ -1,7 +1,7 @@
 {
-  "name": "Fill-Up — cheapest forecourt by true cost",
+  "name": "Fill-Up — where's actually cheapest to fill up?",
   "short_name": "Fill-Up",
-  "description": "Find the cheapest place to fill up in the UK, ranked by true cost — pump price plus the fuel you'd burn driving there.",
+  "description": "Type your postcode. Free, no sign-up: it finds the cheapest fill-up near you, counting the fuel to drive there.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

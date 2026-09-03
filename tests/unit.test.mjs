@@ -1,5 +1,5 @@
 // unit.test.mjs — the fetcher's pure functions, against the shapes the real API sends.
-// Copyright (c) 2026 Thomas Ainsworth. All rights reserved — see LICENSE.
+// Copyright (c) 2026 the owner of whichpump.co.uk. All rights reserved — see LICENSE.
 //
 // Every awkward case here was seen in production data first: the 00:00-00:00 junk
 // hours, the pounds-instead-of-pence prices, grades that reprice independently.

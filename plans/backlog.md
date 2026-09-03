@@ -3,7 +3,12 @@
 > **Update 2026-09-03.** The trust batch shipped from the review board (static About
 > section, footer link to `/petrol/`, honest sample-data fallback): items 20, 21, 23, 29 ✅,
 > 19 closed as covered, 22 half-declined by Tom (the label stays). Board open set is now
-> 3, 8, 12, 13, 16, 18, 27, 28. First daily bake proved 3 Sep.
+> 3, 8, 12, 13, 16, 18, 27, 28. First daily bake proved 3 Sep. Same evening, the
+> long-deferred decisions cleared: copyright → trading identity (14 files); manifest name/
+> description synced to the panel-tested header pair, README title reworded to "the cheapest
+> petrol station by true cost"; local cleanup done (.DS_Store ×7, .playwright-mcp emptied,
+> refs/original dropped + gc: .git 350 MB → 22 MB; the older handoffs deliberately kept —
+> the 3 Sep one cites their gotcha lists).
 >
 > **Update 2026-09-01.** Domain migration: ✅ done (whichpump.co.uk live, old URL
 > 301s — the "before saved postcodes" ordering constraint is satisfied and dead).
@@ -161,8 +166,10 @@ Recorded 2026-07-31 alongside building the CI tests:
    rejected on a throwaway branch. Details in
    [security-review-2026-08-23.md](security-review-2026-08-23.md) §1; its §2 (scope the
    Pi's PAT down) is what keeps this held.
-3. **Fire the healthchecks.io test notification.** The ping works, but no alert email
-   has ever actually been sent (the one real outage recovered inside the grace window).
+3. ~~**Fire the healthchecks.io test notification.**~~ ✅ **DONE 3 Sep** — Tom pressed
+   "Send test notification"; the alert email arrived. The switch has now been heard
+   ringing. Original note: the ping works, but no alert email
+   had ever actually been sent (the one real outage recovered inside the grace window).
    Until the "Send test notification" button is pressed, the dead-man's switch is a
    switch nobody has heard ring. **Still open, still ~1 minute of Thomas's time.**
 

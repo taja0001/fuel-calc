@@ -1,5 +1,5 @@
 // build-index.mjs
-// Copyright (c) 2026 Thomas Ainsworth. All rights reserved — see LICENSE.
+// Copyright (c) 2026 the owner of whichpump.co.uk. All rights reserved — see LICENSE.
 //
 // Maintains data/index.json: one row per day, the national average pump price.
 // The git history of prices.json is a month-and-counting diary of every price in

@@ -57,7 +57,10 @@ domain-takeover class from day one (security review #4).
 Every place the old name/URL lives in served files, found by grep tonight:
 
 - [x] index.html line 4: `https://fuel.thomasainsworth.co.uk` → new URL.
-- [ ] index.html line 5 + LICENSE: the copyright line — **[TOM DECIDES]** real name
+- [x] index.html line 5 + LICENSE: the copyright line — **DECIDED 3 Sep: trading identity.**
+      Now "Copyright (c) 2026 the owner of whichpump.co.uk" in LICENSE, index.html, README
+      and the 11 script/test headers; no real name left in served or tracked files
+      (plans/notes quote it historically). Was: **[TOM DECIDES]** real name
       or trading name (the "name off the site" scope call; git history is NOT
       rewritten either way — that would destroy the price archive, standing ruling).
 - [x] index.html og:title/title: already domain-free ✅; **add `og:url`** with the new

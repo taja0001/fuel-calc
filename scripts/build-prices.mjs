@@ -1,5 +1,5 @@
 // build-prices.mjs
-// Copyright (c) 2026 Thomas Ainsworth. All rights reserved — see LICENSE.
+// Copyright (c) 2026 the owner of whichpump.co.uk. All rights reserved — see LICENSE.
 // Fetches all UK fuel prices from the government Fuel Finder public API and
 // writes a compact data/prices.json for the web app. Must run from a
 // residential connection (the API firewall blocks datacenter IPs).

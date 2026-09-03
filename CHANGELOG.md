@@ -38,6 +38,14 @@ feed instead of keeping the sample for the session. Previewed as a before/after 
 and picked item by item; the "Price feed updated" label change was offered and
 declined. (72 tests.)
 
+**The name comes off the last 14 places.** The copyright line in LICENSE, the
+view-source header of index.html, the README and every script and test now reads
+"the owner of whichpump.co.uk" — the trading identity the domain move was for. The
+install manifest takes the panel-tested title and tagline (it still said "cheapest
+forecourt by true cost" on the add-to-home-screen prompt), and the README title
+swaps "forecourt" for "petrol station" while keeping true cost as the repo's framing.
+No service-worker bump needed: the manifest rides stale-while-revalidate.
+
 ---
 
 ## 2026-09-01

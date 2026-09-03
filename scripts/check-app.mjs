@@ -1,5 +1,5 @@
 // check-app.mjs
-// Copyright (c) 2026 Thomas Ainsworth. All rights reserved — see LICENSE.
+// Copyright (c) 2026 the owner of whichpump.co.uk. All rights reserved — see LICENSE.
 //
 // Static checks for the constraints that have actually bitten this app. Runs in CI on
 // every push and exits non-zero on failure. No dependencies, no network.

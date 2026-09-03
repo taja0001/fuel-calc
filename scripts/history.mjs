@@ -1,5 +1,5 @@
 // history.mjs
-// Copyright (c) 2026 Thomas Ainsworth. All rights reserved — see LICENSE.
+// Copyright (c) 2026 the owner of whichpump.co.uk. All rights reserved — see LICENSE.
 //
 // Per-station price history — the scalars behind the app's "▲ 2p since Tue" badges.
 // The git archive of data/prices.json knows every answer, but reading it at fetch

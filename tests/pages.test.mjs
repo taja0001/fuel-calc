@@ -1,5 +1,5 @@
 // pages.test.mjs — the /petrol/ area-page generator's pure functions.
-// Copyright (c) 2026 Thomas Ainsworth. All rights reserved — see LICENSE.
+// Copyright (c) 2026 the owner of whichpump.co.uk. All rights reserved — see LICENSE.
 //
 // The rules pinned here are the plan's promises (plans/town-pages.md): the thin-page
 // gate, honest freshness wording, both fuels side by side, and name-calming parity

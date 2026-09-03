@@ -4,7 +4,8 @@
 > the ticked record is [whichpump-cutover-runbook.md](whichpump-cutover-runbook.md).
 > Step 9 went the route-under-domain way (`counter.whichpump.co.uk`); og:url shipped
 > in the scrub. This file stays as the reasoning of record; nothing in it is still
-> pending except the copyright/trading-name call it flags, which remains Tom's.
+> pending: the copyright/trading-name call it flagged was made 3 Sep — trading
+> identity ("the owner of whichpump.co.uk") in all 14 places, decided one question at a time.
 
 > **This plan now gates advertising too** (2026-08-25): Thomas wants to launch on
 > local Facebook groups and MSE, and [forum-launch.md](forum-launch.md) makes this

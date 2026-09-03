@@ -235,6 +235,13 @@ in DNS permanently.
 
 ### 5. Confirm 2FA is on, and check the parked apex/www DNS records
 
+> **Resolved in part 2026-09-03.** Tom opened the zone: the apex is a proxied CNAME to
+> `www`, and `www` is a proxied CNAME back to the apex — a **CNAME loop**, which is
+> exactly what Cloudflare's 530 means here. Neither row points at a third-party hostname,
+> so the takeover class this item feared **does not apply**. What remains is tidiness:
+> delete both rows, or replace the apex with a proxied `AAAA 100::` and add a Redirect
+> Rule to https://whichpump.co.uk. Tom chose **later**. 2FA still unconfirmed by him.
+
 Two things nobody could check remotely:
 
 - **2FA on the `taja0001` account** — GitHub's account requires it for

@@ -1,5 +1,5 @@
 // workers/search-counter.js
-// Copyright (c) 2026 Thomas Ainsworth. All rights reserved — see LICENSE.
+// Copyright (c) 2026 the owner of whichpump.co.uk. All rights reserved — see LICENSE.
 //
 // Counts searches. The whole privacy contract in one sentence: a stored row is four
 // words — "search", near|journey, ok|err, and an AREA no finer than a postcode

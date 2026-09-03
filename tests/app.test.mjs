@@ -1,5 +1,5 @@
 // app.test.mjs — the real app, driven in a real browser.
-// Copyright (c) 2026 Thomas Ainsworth. All rights reserved — see LICENSE.
+// Copyright (c) 2026 the owner of whichpump.co.uk. All rights reserved — see LICENSE.
 //
 // Serves the actual index.html against a synthetic prices.json built around a known
 // origin, with the external services mocked at the network layer and the clock pinned

@@ -1,5 +1,5 @@
 // sw.test.mjs — the real service worker, driven interception-free.
-// Copyright (c) 2026 Thomas Ainsworth. All rights reserved — see LICENSE.
+// Copyright (c) 2026 the owner of whichpump.co.uk. All rights reserved — see LICENSE.
 //
 // app.test.mjs blocks sw.js because Playwright's route() interception and
 // worker-controlled pages don't mix reliably. The worker still needs coverage — the

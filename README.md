@@ -1,4 +1,4 @@
-# Fill-Up — cheapest forecourt by true cost
+# Fill-Up — the cheapest petrol station by true cost
 
 A free web app that finds the cheapest place to fill up, ranked by
 **true cost** — the pump price plus the fuel you'd actually burn getting there —
@@ -341,7 +341,7 @@ link and installed app keeps working.
 
 ## Licence
 
-**The code is not open source.** Copyright © 2026 Thomas Ainsworth, all rights
+**The code is not open source.** Copyright © 2026 the owner of whichpump.co.uk, all rights
 reserved — see [LICENSE](LICENSE). The repository is public and the app's source
 reaches every browser that loads it, because that's how the web works; neither is a
 grant of permission. Want to use some of it? Ask.

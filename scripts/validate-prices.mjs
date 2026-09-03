@@ -1,5 +1,5 @@
 // validate-prices.mjs
-// Copyright (c) 2026 Thomas Ainsworth. All rights reserved — see LICENSE.
+// Copyright (c) 2026 the owner of whichpump.co.uk. All rights reserved — see LICENSE.
 // Sanity-checks data/prices.json and exits non-zero if it looks wrong.
 //
 // This runs in GitHub Actions on every push that touches the file. It needs no API

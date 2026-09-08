@@ -52,6 +52,14 @@ Legend: **[TOM]** clicks/decisions · **[CLAUDE]** builds, Tom commits.
 
 ## 6. Title iteration — later, with data *(not before ~late Sep)*
 
+> **GSC baseline, 8 Sep 2026** (five days after the pages went live): indexed = the
+> homepage only. "Discovered – currently not indexed" = **120** (the /petrol/ index +
+> 119 area pages — the sitemap exactly; Google has the URLs, hasn't fetched them).
+> "Page with redirect" = 3 (http/www/slash-less homepage variants — intentional, ignore).
+> No "Crawled – currently not indexed", which is the only reason that would call for
+> page changes. Tom requested indexing for /petrol/, nottingham, birmingham and leeds
+> the same day. Next look ~11 Sep, then twice a week; judge the trend around 22 Sep.
+
 - [ ] **[CLAUDE]** Once GSC shows a few weeks of impressions for the area pages,
       rewrite underperformers' titles/descriptions from real queries, not guesses.
       Same data steers which tier-2 towns get built (town-pages.md phase 4).

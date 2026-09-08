@@ -80,6 +80,7 @@ route for journey mode). Both are cookieless and need no key.
 | `robots.txt` / `sitemap.xml` | Crawler rules (internals kept out of search) and the one-URL sitemap, submitted to Google + Bing. |
 | `CNAME` | The custom domain (`whichpump.co.uk`) — read by GitHub Pages. |
 | `workers/search-counter.js` | The search counter Worker, deployed at `counter.whichpump.co.uk`. |
+| `workers/old-domain-rescue.js` | Worker on the OLD hostname (`fuel.thomasainsworth.co.uk`): serves a kill-switch `sw.js` and proxies `data/prices.json`, so installs stranded by the domain move cure themselves instead of showing sample prices forever. Deploy notes in its header. |
 | `workflows/update-prices.yml` | **Parked, does nothing.** Not in `.github/`, so GitHub never reads it. Kept as a record of why Actions can't do the fetch. |
 | `pi/README.md` | The contract the Pi's off-repo runner must honour — step order and the post-push heartbeat. |
 | `CHANGELOG.md` | What's changed and when. |

@@ -5,6 +5,24 @@ data, not changes, and aren't listed — there are hundreds of them by now.
 
 ---
 
+## 2026-09-08
+
+**The domain move's one casualty, found and fixed.** A user's phone was still running
+the app from the old address: a ten-day-old shell, Nottingham sample prices for a
+Bedfordshire postcode, and "No forecourts within that radius". The blanket 301 that
+moves everyone to whichpump.co.uk traps an installed service worker — its update check
+may not follow a redirect, its background page refresh is dropped, and its same-origin
+prices fetch is redirected cross-origin into a network error, so the app falls back to
+the sample set with no way out short of clearing site data. New
+`workers/old-domain-rescue.js` sits on the old hostname for two paths only: `sw.js`
+becomes a kill switch that clears caches, unregisters and sends open tabs to the new
+domain, and `data/prices.json` is proxied from the new origin so a shell that hasn't
+reloaded yet still gets real prices on its next search. Four unit tests; the proxy
+smoke-tested against the live file. Deployed the same afternoon: the old hostname now
+answers 200 for both paths and still 301s everything else, verified from outside.
+
+---
+
 ## 2026-09-03
 
 **119 area pages: the site learns to be found.** New `/petrol/<area>/` pages — one

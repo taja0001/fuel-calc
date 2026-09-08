@@ -141,9 +141,36 @@ which also puts it behind the zone's free WAF rate-limiting.
 ## What users feel (one-time, small — say it in the changelog)
 
 localStorage doesn't cross origins: mpg/tank/fuel re-entered once; the remembered
-last search resets once. Home-screen installs keep working via the redirect but
-re-add to pick up the new name. This is exactly why the migration goes BEFORE saved
+last search resets once. ~~Home-screen installs keep working via the redirect~~ **WRONG — see "Stale shells"
+below (found 8 Sep).** Re-add to pick up the new name. This is exactly why the migration goes BEFORE saved
 postcodes ships.
+
+## Stale shells — the redirect's one casualty (found 8 Sep 2026, fixed with a Worker)
+
+A real phone turned up still running the app from `fuel.thomasainsworth.co.uk`: old
+URL bar, ten-day-old copy, Nottingham SAMPLE prices for a Sandy postcode, so "No
+forecourts within that radius". The blanket 301 traps a service-worker shell three
+ways — the sw.js update check gets a 301 (worker scripts may not redirect, so the old
+worker never dies), the shell's background refresh gets a 301 (not ok, dropped), and
+the same-origin prices fetch is redirected cross-origin (network error → sample set).
+Nothing on the new domain can reach these users; only the old origin can.
+
+Fix: [workers/old-domain-rescue.js](../workers/old-domain-rescue.js) routed on the old
+hostname for exactly two paths — `/sw.js` (a kill switch: clears caches, unregisters,
+sends open tabs to whichpump.co.uk) and `/data/prices.json` (proxied from the new
+origin, so even a shell that hasn't reloaded yet gets real prices on its next search).
+**Redirect rules run before Workers**, so the fuel rule's expression must exclude
+those two paths. Deploy steps in the Worker's header; tests in tests/worker.test.mjs.
+
+- [x] **Deployed 8 Sep 2026** — Worker live, both routes added, the redirect rule
+      switched from wildcard to a custom filter expression (dynamic target
+      `concat("https://whichpump.co.uk", http.request.uri.path)`, query preserved).
+      Verified from outside: /sw.js 200 (the kill switch), /data/prices.json 200
+      (8,047 stations, same file as the new domain), / and /petrol/leeds/?pc=LS1 → 301
+      with path and query intact.
+- [ ] **[TOM]** Open the old URL on the phone from the screenshots and watch it land on
+      whichpump.co.uk; a Sandy search should then return real stations.
+- [ ] Leave it up for as long as the old domain redirects (years). Idle cost: nil.
 
 ## Unblocked the moment the cert is green
 

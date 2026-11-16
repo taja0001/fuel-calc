@@ -5,6 +5,40 @@ data, not changes, and aren't listed — there are hundreds of them by now.
 
 ---
 
+## 2026-11-16
+
+**Six days of stale prices: the Pi forgot its wifi.** No price push landed between
+08:04 on 10 November and 17:36 on the 16th; the app's amber "last updated 152h ago"
+banner was the only thing that said so. The Pi never lost power. It lost its connection
+at 08:35, the watchdog restarted NetworkManager at 08:40, and within moments the Pi
+reset — leaving both of its saved network profile files at 0 bytes. With no password on disk
+there was nothing to reconnect with, so the watchdog rebooted the Pi every 20 minutes
+for six days while the runner logged "no network" every hour. Recovered over a network
+cable: the profile re-created, wifi power-saving off again, a root-only spare of the
+profile kept at `/root/nm-backup/`, and the runner run by hand — 8,100 stations, the
+validator green, the live file fresh a minute later. The repo, the token and the API
+were never at fault.
+
+**The watchdog learns the one thing it couldn't do.** Two new rules in
+`net-watchdog.sh`, live on the Pi the same evening. Offline with no saved wifi network,
+it now puts the spare profile back before trying anything else; and reboots are
+rationed — three in a row, then one per six hours of uptime (uptime, because an
+offline Pi's clock can't be trusted across reboots) until a check succeeds. Tested
+twice: 31 dry-run cases in a sandbox (the old restart-then-reboot ladder unchanged,
+the hold-off, an empty spare never restored, garbled counters), then for real — the
+wifi profile removed on the Pi, one watchdog run, wifi back in about four seconds.
+The script is in the repo at last (`pi/net-watchdog.sh`, byte-identical to the live
+one) instead of existing only on the SD card.
+
+Recorded so the next one is a five-minute job: `pi/README.md` gains "The saved wifi
+network" (how to recognise it, the two-command fix, why the cable is worth leaving
+in, and that the spare must be refreshed if the wifi password changes). Still open: the Pi reads undervoltage
+(`throttled=0x50005`) on a borrowed charger and cable, and a voltage sag is the
+likeliest cause of the reset that emptied the files — it needs the official 5.1V 2.5A
+supply. The gap itself (10–16 Nov) is a real outage in the price archive.
+
+---
+
 ## 2026-09-08
 
 **The domain move's one casualty, found and fixed.** A user's phone was still running

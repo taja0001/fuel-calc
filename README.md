@@ -282,7 +282,10 @@ transient failure. Scheduled in the user crontab:
 
 **`~/fuel/net-watchdog.sh`** — connectivity self-heal. Scheduled in root's crontab
 every 5 minutes; after ~10 min offline it restarts networking, after ~20 min it
-reboots the Pi:
+reboots the Pi — at most three times running, then once every six hours — and if the
+saved wifi network has vanished it restores a spare copy first. The script is in
+[`pi/net-watchdog.sh`](pi/net-watchdog.sh), identical to the live one; the outage
+behind those last two rules is in [`pi/README.md`](pi/README.md):
 
 ```
 */5 * * * * /home/USER/fuel/net-watchdog.sh >> /home/USER/fuel/watchdog.log 2>&1
